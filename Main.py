@@ -21,10 +21,8 @@ class Player(object):
         self.direction = 0
         self.is_jump = False
         self.height = 64
-        self.width = 32
+        self.width = 47
         self.gravity = uni_gravity
-        self.falling = False
-        self.platform_surface = None
         self.jump_vel = uni_jump_vel
         self.on_surface = False
         self.vel = uni_run_vel
@@ -44,46 +42,52 @@ class Player(object):
 
 
     def move(self):
-
-        # Gravity
-        for obj in objects:
-            if self.x >= obj.x - 40 and self.x + self.width <= obj.x + obj.width:
-                self.on_surface = self.y + self.height == obj.surface
-                if not self.on_surface:
-                    self.falling = True
-                    self.platform_surface = [obj.surface, obj.surface + 10]
-                    print(obj.label)
-                else:
-                    self.falling = False
-                print(self.falling)
-
-        # Falling
-        if self.falling is True:
-            self.gravity = (self.gravity * 1.098)
-            if self.y + self.height + self.gravity > self.platform_surface[0] and self.y < self.platform_surface[1]:
-                self.y = self.platform_surface[0] - self.height
-                self.gravity = uni_gravity
-            else:
-                self.y = int(self.y + self.gravity)
-
-        # Jumping
-        if self.is_jump is True:
-            if self.gravity <= self.jump_vel:
-                self.y -= self.jump_vel
-
-            else:
-                self.is_jump = False
-                self.jump_vel = uni_jump_vel
-
         # Walking Right
         if player.direction == 1:
-            if self.x + self.width + self.vel < worldx:
-                self.x += self.vel
+            self.collision(self.vel, 0)
 
         # Walking Left
         elif player.direction == -1:
-            if self.x - self.width > 0:
-                self.x -= self.vel
+            self.collision(self.vel * -1, 0)
+
+        # Jumping
+        if self.is_jump is True:
+            self.collision(0, self.jump_vel * - 1)
+            self.jump_vel -= self.gravity
+            #print("grav: {g}".format(g=self.gravity))
+            print("jump {j}".format(j=self.jump_vel))
+            if self.jump_vel < self.gravity:
+                self.is_jump = False
+                self.jump_vel = uni_jump_vel
+
+        # Gravity
+        if not self.collision(0, self.gravity):
+            self.gravity = self.gravity * uni_grav_acel
+            #print(self.gravity)
+        else:
+            print("not falling")
+            self.falling = False
+            self.gravity = uni_gravity
+
+
+
+    def collision(self, x, y):
+        collision = False
+        count = 0
+        while collision is False and count < len(objects):
+            #print(objects[count].label)
+            #print("x: {x} y: {y}  object: {o}".format(x=self.x + x, y=self.y + y, o=obj.dimensions))
+            if self.x + self.width + x > objects[count].dimensions[0] and self.x + x < objects[count].dimensions[1] and self.y + self.height + y > objects[count].dimensions[2] and self.y + y < objects[count].dimensions[3]:
+                collision = True
+            elif self.x + x < 0 or self.x + self.width + x > worldx:
+                collision = True
+
+            count += 1
+        if collision == False:
+            self.x += x
+            self.y = int(y + self.y)
+            print("self.y: {y}".format(y=self.y))
+        return collision
 
     def jump(self):
         if player.is_jump == False:
@@ -118,6 +122,9 @@ class Object(object):
         self.height = height
         self.surface = y + 14
         self.label = label
+        self.right_edge = self.x + self.width
+        self.bottom_edge = self.y + self.height
+        self.dimensions = [self.x, self.right_edge, self.surface, self.bottom_edge]
 
     def draw(self, world):
         world.blit(self.img, (self.x, self.y))
@@ -153,8 +160,8 @@ mdm_platform = (os.path.join('images', '2TilePlatform128x64.png'))
 
 # world variables
 uni_gravity = 1
-uni_jump_vel = 10
-uni_jump_deg = .25
+uni_jump_vel = 20
+uni_grav_acel = 1.098
 uni_run_vel = 5
 
 red = (227, 41, 44)
@@ -165,9 +172,9 @@ blue = (41, 156, 227)
 objects = []
 enemies = []
 
-player = Player(0, 410)
+player = Player(200, 410)
+objects.append(Object(0, 412, 128, 64, mdm_platform, "platform one"))
 objects.append(Object(0, 476, 960, 64, ground, "ground"))
-objects.append(Object(832, 316, 128, 64, mdm_platform, "platform one"))
 
 
 main = True
