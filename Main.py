@@ -20,11 +20,11 @@ class Player(object):
         self.walk_count = 0
         self.direction = 0
         self.is_jump = False
-        self.height = 64
-        self.width = 47
+        self.height = 48
+        self.width = 33
         self.gravity = uni_gravity
         self.jump_vel = uni_jump_vel
-        self.on_surface = False
+        self.is_falling = False
         self.vel = uni_run_vel
 
     def draw(self, world):
@@ -44,49 +44,55 @@ class Player(object):
     def move(self):
         # Walking Right
         if player.direction == 1:
+            #print("move right")
             self.collision(self.vel, 0)
 
         # Walking Left
         elif player.direction == -1:
+            #print("move left")
             self.collision(self.vel * -1, 0)
 
         # Jumping
         if self.is_jump is True:
-            self.collision(0, self.jump_vel * - 1)
-            self.jump_vel -= self.gravity
-            #print("grav: {g}".format(g=self.gravity))
-            print("jump {j}".format(j=self.jump_vel))
-            if self.jump_vel < self.gravity:
+            #print("jumping!")
+            if self.collision(0, self.jump_vel * - 1):
+                self.is_jump = False
+            self.jump_vel -= uni_gravity
+
+        # Gravity
+        if not self.is_jump:
+            self.not_falling = self.collision(0, self.gravity)
+            if not self.not_falling:
+                self.gravity += uni_grav_acel
+                #print("falling")
+            else:
+                self.gravity = uni_gravity
                 self.is_jump = False
                 self.jump_vel = uni_jump_vel
 
-        # Gravity
-        if not self.collision(0, self.gravity):
-            self.gravity = self.gravity * uni_grav_acel
-            #print(self.gravity)
-        else:
-            print("not falling")
-            self.falling = False
-            self.gravity = uni_gravity
 
 
 
     def collision(self, x, y):
         collision = False
         count = 0
+        #print("collision: {x}, {y}".format(x=x, y=y))
         while collision is False and count < len(objects):
-            #print(objects[count].label)
-            #print("x: {x} y: {y}  object: {o}".format(x=self.x + x, y=self.y + y, o=obj.dimensions))
             if self.x + self.width + x > objects[count].dimensions[0] and self.x + x < objects[count].dimensions[1] and self.y + self.height + y > objects[count].dimensions[2] and self.y + y < objects[count].dimensions[3]:
                 collision = True
             elif self.x + x < 0 or self.x + self.width + x > worldx:
                 collision = True
-
+            elif self.x + self.width + x > objects[count].dimensions[0] and self.x + x < objects[count].dimensions[1] and self.y + self.height > objects[count].dimensions[2] - y and self.y + y < objects[count].dimensions[3]:
+                collision = True
+                #print(objects[count].label)
+                self.y = objects[count].dimensions[2] + self.height
+                self.x += x
+                #print(self.y)
             count += 1
         if collision == False:
             self.x += x
             self.y = int(y + self.y)
-            print("self.y: {y}".format(y=self.y))
+        #print(collision)
         return collision
 
     def jump(self):
@@ -98,13 +104,16 @@ class Player(object):
         if player.direction != 1:
             player.direction = 1
             player.walk_count = 0
+            #self.width = 26
 
     def move_left(self):
         if player.direction != -1:
             player.direction = -1
             player.walk_count = 0
+            #self.width = 26
 
     def stand(self):
+        #self.width = 33
         player.direction = 0
 
 
@@ -120,7 +129,7 @@ class Object(object):
         self.img = pygame.image.load(filename)
         self.width = width
         self.height = height
-        self.surface = y + 14
+        self.surface = y - 2
         self.label = label
         self.right_edge = self.x + self.width
         self.bottom_edge = self.y + self.height
@@ -128,6 +137,7 @@ class Object(object):
 
     def draw(self, world):
         world.blit(self.img, (self.x, self.y))
+        #pygame.draw.rect(world, red, (self.x, self.surface, self.width, self.height), 1 )
 
 
 def draw_world(world):
@@ -160,8 +170,8 @@ mdm_platform = (os.path.join('images', '2TilePlatform128x64.png'))
 
 # world variables
 uni_gravity = 1
-uni_jump_vel = 20
-uni_grav_acel = 1.098
+uni_jump_vel = 16
+uni_grav_acel = 1.1
 uni_run_vel = 5
 
 red = (227, 41, 44)
@@ -173,8 +183,12 @@ objects = []
 enemies = []
 
 player = Player(200, 410)
-objects.append(Object(0, 412, 128, 64, mdm_platform, "platform one"))
+
 objects.append(Object(0, 476, 960, 64, ground, "ground"))
+objects.append(Object(0, 348, 128, 64, mdm_platform, "platform one"))
+objects.append(Object(184, 284, 64, 64, sml_platform, "platform two"))
+objects.append(Object(312, 156, 64, 64, sml_platform, "platform two"))
+objects.append(Object(440, 28, 64, 64, sml_platform, "platform two"))
 
 
 main = True
@@ -188,13 +202,14 @@ while main is True:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
-            sys.exit()
             main = False
+            sys.exit()
+
         # if keystroke is pressed check whether its right or left
         if event.type == pygame.KEYDOWN:
             if event.key == ord('q'):
-                sys.exit()
                 main = False
+                sys.exit()
             if event.key == pygame.K_SPACE:
                 player.jump()
             if event.key == pygame.K_RIGHT:
