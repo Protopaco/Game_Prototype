@@ -129,7 +129,7 @@ class Object(object):
         self.img = pygame.image.load(filename)
         self.width = width
         self.height = height
-        self.surface = y - 2
+        self.surface = y + 14
         self.label = label
         self.right_edge = self.x + self.width
         self.bottom_edge = self.y + self.height
