@@ -7,6 +7,30 @@ import spritesheet
 OBJECTS
 """
 
+class HUD(object):
+    def __init__(self):
+        self.font = pygame.font.Font('ARCADECLASSIC.TTF', 42)
+        self.coin_still = pygame.image.load(os.path.join('images/object', 'coin_still100.png'))
+        self.coin_still = pygame.transform.scale(self.coin_still, (40, 40))
+        self.coin_still_width = self.coin_still.get_width()
+        self.cs = spritesheet.spritesheet(os.path.join('images/object', 'coin100.png'))
+        self.coin_ani_count = 0
+        self.coin_rotation_rate = .2
+        self.coin_ani = self.cs.load_strip((0, 0, 100, 100), 16, (0, 0, 0))
+        for i in range(0, len(self.coin_ani)):
+            self.coin_ani[i] = pygame.transform.scale(self.coin_ani[i], (40,40))
+
+    def draw(self, world):
+        coin_score = self.font.render(str(player.coin_count), 2, (245, 227, 66))
+        score_width = coin_score.get_width()
+        world.blit(coin_score, (worldx - 5 - score_width, 5))
+        """
+        world.blit(self.coin_still, (worldx - 5 - score_width - 5 - self.coin_still_width, 5))
+        """
+        world.blit(self.coin_ani[round(self.coin_ani_count)], (worldx - 5 - score_width - 5 - self.coin_still_width, 5))
+        self.coin_ani_count += self.coin_rotation_rate
+        if self.coin_ani_count >= len(self.coin_ani) -1:
+            self.coin_ani_count = 0
 
 # classes and functions
 class Player(object):
@@ -27,6 +51,7 @@ class Player(object):
         self.jump_vel = uni_jump_vel
         self.is_falling = False
         self.vel = uni_run_vel
+        self.coin_count = 0
 
     def draw(self, world):
         self.move()
@@ -71,6 +96,11 @@ class Player(object):
                 self.is_jump = False
                 self.jump_vel = uni_jump_vel
 
+        # Coin Collision
+        for coin in coins:
+            if self.x + self.width > coin.x and self.x < coin.x + coin.width and self.y + self.width > coin.y and self.y < coin.y + coin.width:
+                self.coin_count += 1
+                coins.pop(coins.index(coin))
 
 
 
@@ -126,7 +156,7 @@ class enemy(object):
         self.direction = 0
         self.run_r = []
         self.run_l = []
-        self.jump = []
+        self.jump_img = []
         self.idle = []
         self.vel = 0
         self.hp = 0
@@ -136,27 +166,39 @@ class enemy(object):
         self.gravity = uni_gravity
         self.jump_vel = 0
         self.is_falling = False
+        self.run_count = 0
+        self.max_jump_vel = 0
 
 
     def draw(self, world):
         self.move()
-        if self.walk_count > fps - 5:
-            self.walk_count = 0
-        print("walk_count: {w}".format(w=self.walk_count))
-        print("out of bounds: {b}".format(b= self.walk_count //(fps // len(self.run_l))))
-        if self.direction == 0:
-            if self.idle_count > len(self.idle):
+        if self.is_jump and self.jump_vel > 1:
+            world.blit(self.jump_img[0], (self.x, self.y))
+        elif self.is_jump and self.jump_vel < 1:
+            world.blit(self.jump_img[1], (self.x, self.y))
+        elif self.direction == 0:
+            if self.idle_count > len(self.idle)-1:
                 self.idle_count = 0
-            world.blit(self.idle[self.idle_count], (self.x, self.y))
-            self.idle_count += 1
-        elif self.direction == 1:
-            world.blit(self.run_r[int(self.walk_count // (fps // len(self.run_r)))], (self.x, self.y))
-        elif self.direction == -1:
-            world.blit(self.run_l[int(self.walk_count // (fps // len(self.run_l)))], (self.x, self.y))
-
-        self.walk_count += 1
-
-
+            world.blit(self.idle[round(self.idle_count)], (self.x, self.y))
+            self.idle_count += .2
+        elif self.direction > 0:
+            world.blit(self.run_r[self.run_count], (self.x, self.y))
+            self.run_count += 1
+        elif self.direction < 0:
+            world.blit(self.run_l[self.run_count], (self.x, self.y))
+            self.run_count += 1
+        if self.run_count > len(self.run_r)-1:
+            self.run_count = 0
+        """
+        world.blit(self.run_r[self.run_count], (self.x, self.y))
+        self.run_count += 1
+        if self.run_count > len(self.run_r)-1:
+            self.run_count = 0
+        world.blit(self.idle[self.idle_count], (self.x, self.y))
+        self.idle_count += 1
+        if self.idle_count >= len(self.idle) - 1:
+            self.idle_count = 0
+        """
     def move(self):
         self.ai()
         # Walking Right
@@ -174,6 +216,7 @@ class enemy(object):
             #print("jumping!")
             if self.collision(0, self.jump_vel * - 1):
                 self.is_jump = False
+                #self.jump_vel = self.max_jump_vel
             self.jump_vel -= uni_gravity
 
         # Gravity
@@ -186,6 +229,8 @@ class enemy(object):
                 self.gravity = uni_gravity
                 self.is_jump = False
                 self.jump_vel = uni_jump_vel
+
+
 
     def collision(self, x, y):
         collision = False
@@ -231,12 +276,16 @@ class enemy(object):
         self.direction = 0
 
     def ai(self):
+        """
         if self.x + 10 < player.x:
             self.move_right()
         elif self.x - 10 > player.x:
             self.move_left()
         else:
             self.stand()
+        if self.y > player.y and pygame.time.get_ticks() % 100 == 0:
+            self.jump()
+        """
 
 
 
@@ -245,13 +294,13 @@ class enemy(object):
 class red_guy(enemy):
     def __init__(self, x, y):
         self.bs = spritesheet.spritesheet(os.path.join('images/red_guy', 'blink.png'))
-        self.rs = spritesheet.spritesheet(os.path.join('images/red_guy', 'run_r2.png'))
+        self.rs = spritesheet.spritesheet(os.path.join('images/red_guy', 'run_r.png'))
         self.js = spritesheet.spritesheet(os.path.join('images/red_guy', 'jump.png'))
-        self.still = self.rs.image_at((0, 0, 100, 100), (0, 0, 0))
+        self.still = self.bs.image_at((0, 0, 100, 100), (0, 0, 0))
         self.still = pygame.transform.scale(self.still, (48, 48))
         self.run_r = self.rs.load_strip((0, 0, 100, 100),  18, (0, 0, 0))
         self.idle = self.bs.load_strip((0, 0, 100, 100),  11, (0, 0, 0))
-        self.jump = self.js.load_strip((0, 0, 100, 100), 2, (0, 0, 0))
+        self.jump_img = self.js.load_strip((0, 0, 100, 100), 2, (0, 0, 0))
         self.run_l = []
         self.walk_count = 0
         self.vel = 3
@@ -262,20 +311,118 @@ class red_guy(enemy):
         self.height = 48
         self.is_jump = False
         self.gravity = uni_gravity
-        self.run_r_count = 0
-        self.run_l_count = 0
+        self.run_count = 0
         self.idle_count = 0
+        self.max_jump_vel = 20
+        self.jump_vel = self.max_jump_vel
 
 
-        for i in range(0, len(self.jump)):
-            self.jump[i] = pygame.transform.scale(self.jump[i], (48,48))
+
+        for i in range(0, len(self.jump_img)):
+            self.jump_img[i] = pygame.transform.scale(self.jump_img[i], (48,48))
         for i in range(0, len(self.idle)):
             self.idle[i] = pygame.transform.scale(self.idle[i], (48,48))
         for i in range(0, len(self.run_r)):
             self.run_r[i] = pygame.transform.scale(self.run_r[i], (48,48))
+
         for i in range(0, len(self.run_r)):
             self.run_l.append(pygame.transform.flip(self.run_r[i], True, False))
 
+    def ai(self):
+        if self.x + 10 < player.x:
+            self.move_right()
+        elif self.x - 10 > player.x:
+            self.move_left()
+        else:
+            self.stand()
+        if self.y > player.y and pygame.time.get_ticks() % 100 == 0:
+            self.jump()
+
+class blue_guy(enemy):
+    def __init__(self, x, y):
+        self.bs = spritesheet.spritesheet(os.path.join('images/blue_guy', 'blink.png'))
+        self.rs = spritesheet.spritesheet(os.path.join('images/blue_guy', 'run_r3.png'))
+        self.js = spritesheet.spritesheet(os.path.join('images/blue_guy', 'jump.png'))
+        self.still = self.bs.image_at((0, 0, 100, 100), (0, 0, 0))
+        self.still = pygame.transform.scale(self.still, (48, 48))
+        self.run_r = self.rs.load_strip((0, 0, 100, 100),  18, (0, 0, 0))
+        self.idle = self.bs.load_strip((0, 0, 100, 100),  11, (0, 0, 0))
+        self.jump_img = self.js.load_strip((0, 0, 100, 100), 2, (0, 0, 0))
+        self.run_l = []
+        self.walk_count = 0
+        self.vel = 3
+        self.x = x
+        self.y = y
+        self.direction = 0
+        self.width = 48
+        self.height = 48
+        self.is_jump = False
+        self.gravity = uni_gravity
+        self.run_count = 0
+        self.idle_count = 0
+        self.max_jump_vel = 20
+        self.jump_vel = self.max_jump_vel
+
+
+
+        for i in range(0, len(self.jump_img)):
+            self.jump_img[i] = pygame.transform.scale(self.jump_img[i], (48,48))
+        for i in range(0, len(self.idle)):
+            self.idle[i] = pygame.transform.scale(self.idle[i], (48,48))
+        for i in range(0, len(self.run_r)):
+            self.run_r[i] = pygame.transform.scale(self.run_r[i], (48,48))
+
+        for i in range(0, len(self.run_r)):
+            self.run_l.append(pygame.transform.flip(self.run_r[i], True, False))
+
+    def ai(self):
+        if self.x > player.x + 100 and self.x < player.x + 200:
+            self.move_left()
+        elif self.x < player.x - 100 and self.x > player.x - 200:
+            self.move_right()
+        else:
+            self.stand()
+        if self.y <= player.y and pygame.time.get_ticks() % 100 == 0:
+            self.jump()
+
+class Coin(object):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.cs = spritesheet.spritesheet(os.path.join('images/object', 'coin100.png'))
+        self.coin_ani = self.cs.load_strip((0, 0, 100, 100), 16, (0, 0, 0))
+        self.coin_ani_count = 0
+        self.coin_rotation_rate = .3
+        self.width = 40
+        self.height = 40
+        self.settled = False
+        self.coin_coordinates = [self.x, self.y, self.x + self.width, self.y + self.height]
+
+        for i in range(0, len(self.coin_ani)):
+            self.coin_ani[i] = pygame.transform.scale(self.coin_ani[i], (40,40))
+
+    def draw(self, world):
+        if self.settled is False:
+            self.gravity()
+        world.blit(self.coin_ani[round(self.coin_ani_count)], (self.x, self.y))
+        self.coin_ani_count += self.coin_rotation_rate
+        if self.coin_ani_count >= len(self.coin_ani) -1:
+            self.coin_ani_count = 0
+
+    def collision(self, y):
+        collision = False
+        count = 0
+        while collision is False and count < len(objects):
+            if self.x + self.width > objects[count].dimensions[0] and self.x < objects[count].dimensions[1] and self.y + self.height + y > objects[count].dimensions[2] and self.y + y < objects[count].dimensions[3]:
+                collision = True
+            count += 1
+        if collision == False:
+            self.y = int(y + self.y)
+        return collision
+
+    def gravity(self):
+        if self.collision(uni_gravity) is True:
+            self.settled = True
 
 
 class Object(object):
@@ -298,10 +445,14 @@ class Object(object):
 
 def draw_world(world):
     world.blit(backdrop, backdropbox)
+    hud.draw(world)
     for obj in objects:
         obj.draw(world)
     player.draw(world)
-    rg1.draw(world)
+    for enemy in enemies:
+        enemy.draw(world)
+    for coin in coins:
+        coin.draw(world)
 
 
 """
@@ -309,16 +460,17 @@ SETUP
 """
 # run once code
 # world creation
-worldx = 960
-worldy = 540
+worldx = 1920
+worldy = 1080
 fps = 40
 ani = 4
 clock = pygame.time.Clock()
 pygame.init()
-world = pygame.display.set_mode([worldx, worldy])
-backdrop = pygame.image.load(os.path.join('images', 'Background960x540.png')).convert()
+world = pygame.display.set_mode([worldx, worldy], pygame.FULLSCREEN)
+hud = HUD()
+backdrop = pygame.image.load(os.path.join('images', 'Background1920x1080.png')).convert()
 backdropbox = world.get_rect()
-ground = (os.path.join('images', 'ground960x64.png'))
+ground = (os.path.join('images', 'full_ground1920x64.png'))
 sml_platform = (os.path.join('images', '1TilePlatform64x64.png'))
 mdm_platform = (os.path.join('images', '2TilePlatform128x64.png'))
 
@@ -337,15 +489,26 @@ blue = (41, 156, 227)
 # create world objects
 objects = []
 enemies = []
+coins = []
 
 player = Player(0, 0)
-rg1 = red_guy(300, 400)
+enemies.append(red_guy(300, 400))
+enemies.append(blue_guy(200, 400))
 
-objects.append(Object(0, 476, 960, 64, ground, "ground"))
+
+objects.append(Object(0, worldy-64, 1920, 64, ground, "ground"))
 objects.append(Object(0, 348, 128, 64, mdm_platform, "platform one"))
 objects.append(Object(184, 284, 64, 64, sml_platform, "platform two"))
-objects.append(Object(312, 156, 64, 64, sml_platform, "platform two"))
-objects.append(Object(440, 28, 64, 64, sml_platform, "platform two"))
+objects.append(Object(312, 156, 64, 64, sml_platform, "platform three"))
+objects.append(Object(440, 28, 64, 64, sml_platform, "platform four"))
+
+coins.append(Coin(200, 240))
+coins.append(Coin(325, 110))
+coins.append(Coin(445, 0))
+coin_x = 100
+for i in range(0, 15):
+    coins.append(Coin(coin_x, 440))
+    coin_x += 40
 
 
 main = True
