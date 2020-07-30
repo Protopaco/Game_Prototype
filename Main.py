@@ -2,9 +2,12 @@ import pygame
 import sys
 import os
 import spritesheet
+import platforms
+
+
 
 """
-OBJECTS
+platforms.platformS
 """
 
 class HUD(object):
@@ -108,15 +111,15 @@ class Player(object):
         collision = False
         count = 0
         #print("collision: {x}, {y}".format(x=x, y=y))
-        while collision is False and count < len(objects):
-            if self.x + self.width + x > objects[count].dimensions[0] and self.x + x < objects[count].dimensions[1] and self.y + self.height + y > objects[count].dimensions[2] and self.y + y < objects[count].dimensions[3]:
+        while collision is False and count < len(platforms):
+            if self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height + y > platforms[count].dimensions[2] and self.y + y < platforms[count].dimensions[3]:
                 collision = True
             elif self.x + x < 0 or self.x + self.width + x > worldx:
                 collision = True
-            elif self.x + self.width + x > objects[count].dimensions[0] and self.x + x < objects[count].dimensions[1] and self.y + self.height > objects[count].dimensions[2] - y and self.y + y < objects[count].dimensions[3]:
+            elif self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height > platforms[count].dimensions[2] - y and self.y + y < platforms[count].dimensions[3]:
                 collision = True
-                #print(objects[count].label)
-                self.y = objects[count].dimensions[2] + self.height
+                #print(platforms.platforms[count].label)
+                self.y = platforms[count].dimensions[2] + self.height
                 self.x += x
                 #print(self.y)
             count += 1
@@ -146,6 +149,10 @@ class Player(object):
     def stand(self):
         #self.width = 33
         self.direction = 0
+
+
+    def hit(self):
+        pass
 
 
 class enemy(object):
@@ -189,16 +196,7 @@ class enemy(object):
             self.run_count += 1
         if self.run_count > len(self.run_r)-1:
             self.run_count = 0
-        """
-        world.blit(self.run_r[self.run_count], (self.x, self.y))
-        self.run_count += 1
-        if self.run_count > len(self.run_r)-1:
-            self.run_count = 0
-        world.blit(self.idle[self.idle_count], (self.x, self.y))
-        self.idle_count += 1
-        if self.idle_count >= len(self.idle) - 1:
-            self.idle_count = 0
-        """
+
     def move(self):
         self.ai()
         # Walking Right
@@ -236,15 +234,15 @@ class enemy(object):
         collision = False
         count = 0
         #print("collision: {x}, {y}".format(x=x, y=y))
-        while collision is False and count < len(objects):
-            if self.x + self.width + x > objects[count].dimensions[0] and self.x + x < objects[count].dimensions[1] and self.y + self.height + y > objects[count].dimensions[2] and self.y + y < objects[count].dimensions[3]:
+        while collision is False and count < len(platforms):
+            if self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height + y > platforms[count].dimensions[2] and self.y + y < platforms[count].dimensions[3]:
                 collision = True
             elif self.x + x < 0 or self.x + self.width + x > worldx:
                 collision = True
-            elif self.x + self.width + x > objects[count].dimensions[0] and self.x + x < objects[count].dimensions[1] and self.y + self.height > objects[count].dimensions[2] - y and self.y + y < objects[count].dimensions[3]:
+            elif self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height > platforms[count].dimensions[2] - y and self.y + y < platforms[count].dimensions[3]:
                 collision = True
-                #print(objects[count].label)
-                self.y = objects[count].dimensions[2] + self.height
+                #print(platforms.platforms[count].label)
+                self.y = platforms[count].dimensions[2] + self.height
                 self.x += x
                 #print(self.y)
             count += 1
@@ -288,11 +286,9 @@ class enemy(object):
         """
 
 
-
-
-
 class red_guy(enemy):
     def __init__(self, x, y):
+        enemy.__init__(self, x, y)
         self.bs = spritesheet.spritesheet(os.path.join('images/red_guy', 'blink.png'))
         self.rs = spritesheet.spritesheet(os.path.join('images/red_guy', 'run_r.png'))
         self.js = spritesheet.spritesheet(os.path.join('images/red_guy', 'jump.png'))
@@ -315,6 +311,7 @@ class red_guy(enemy):
         self.idle_count = 0
         self.max_jump_vel = 20
         self.jump_vel = self.max_jump_vel
+        self.throw_count = 0
 
 
 
@@ -337,9 +334,28 @@ class red_guy(enemy):
             self.stand()
         if self.y > player.y and pygame.time.get_ticks() % 100 == 0:
             self.jump()
+        self.throw_count += 1
+        if self.throw_count >= 100 and len(projectiles) < 5:
+            self.throw_acorn()
+            self.throw_count = 0
+
+
+    def throw_acorn(self):
+        tx = player.x - self.x
+        ty = player.y - self.y
+        z = 100 / (abs(tx) + abs(ty))
+        dx = tx * z
+        dy = ty * z
+        #print('player({x}, {y})'.format(x=player.x, y=player.y))
+        #print('self({x}, {y})'.format(x=self.x, y=self.y))
+        #print("dx: {x}, dy: {y}".format(x=dx, y=dy))
+        #print("throw!")
+        projectiles.append(acorn(self.x, self.y, dx, dy))
+
 
 class blue_guy(enemy):
     def __init__(self, x, y):
+        enemy.__init__(self, x, y)
         self.bs = spritesheet.spritesheet(os.path.join('images/blue_guy', 'blink.png'))
         self.rs = spritesheet.spritesheet(os.path.join('images/blue_guy', 'run_r3.png'))
         self.js = spritesheet.spritesheet(os.path.join('images/blue_guy', 'jump.png'))
@@ -387,6 +403,7 @@ class blue_guy(enemy):
 
 class Coin(object):
     def __init__(self, x, y):
+        object.__init__(self)
         self.x = x
         self.y = y
         self.cs = spritesheet.spritesheet(os.path.join('images/object', 'coin100.png'))
@@ -412,8 +429,8 @@ class Coin(object):
     def collision(self, y):
         collision = False
         count = 0
-        while collision is False and count < len(objects):
-            if self.x + self.width > objects[count].dimensions[0] and self.x < objects[count].dimensions[1] and self.y + self.height + y > objects[count].dimensions[2] and self.y + y < objects[count].dimensions[3]:
+        while collision is False and count < len(platforms):
+            if self.x + self.width > platforms[count].dimensions[0] and self.x < platforms[count].dimensions[1] and self.y + self.height + y > platforms[count].dimensions[2] and self.y + y < platforms[count].dimensions[3]:
                 collision = True
             count += 1
         if collision == False:
@@ -424,36 +441,98 @@ class Coin(object):
         if self.collision(uni_gravity) is True:
             self.settled = True
 
-
-class Object(object):
-    def __init__(self, x, y, width, height, filename, label):
+class projectile(object):
+    def __init__(self, x, y, dx, dy):
         self.x = x
         self.y = y
-        self.img = pygame.image.load(filename)
-        self.width = width
-        self.height = height
-        self.surface = y + 14
-        self.label = label
-        self.right_edge = self.x + self.width
-        self.bottom_edge = self.y + self.height
-        self.dimensions = [self.x, self.right_edge, self.surface, self.bottom_edge]
+        self.dx = dx
+        self.dy = dy
+        self.img = 0
+        self.img_count = 0
+        self.vel = 1
 
     def draw(self, world):
+        self.move()
         world.blit(self.img, (self.x, self.y))
-        #pygame.draw.rect(world, red, (self.x, self.surface, self.width, self.height), 1 )
+
+
+    def move(self):
+        z = self.vel / (abs(self.dx) + abs(self.dy))
+        self.x += self.dx * z
+        self.y += self.dy * z
+
+
+class acorn(projectile):
+    def __init__(self, x, y, dx, dy):
+        projectile.__init__(self, x, y, dx, dy)
+        self.x = x
+        self.y = y
+        self.dx = dx
+        self.dy = dy
+        self.ass = spritesheet.spritesheet(os.path.join('images/object', 'sm_acorn.png'))
+        self.img = self.ass.image_at((0, 0, 24, 19), (0, 0, 0))
+        self.vel = 10
+        self.img_count = 0
 
 
 def draw_world(world):
     world.blit(backdrop, backdropbox)
     hud.draw(world)
-    for obj in objects:
-        obj.draw(world)
+    for plat in platforms:
+        plat.draw(world)
     player.draw(world)
     for enemy in enemies:
         enemy.draw(world)
     for coin in coins:
         coin.draw(world)
+    for proj in projectiles:
+        proj.draw(world)
+        if proj.x > worldx or proj.y > worldy or proj.x < 0 or proj.y < 0:
+            print("x: {x}, y: {y}".format(x=proj.x, y=proj.y))
+            projectiles.remove(proj)
+            print('pop!')
 
+    if grid_on == True:
+        draw_grid(world)
+
+def load_level(level):
+    for platform in level[0]:
+        platforms.append(platform)
+    for coin in level[1]:
+        coins.append(coin)
+    for chest in level[2]:
+        chest.append(chest)
+    for enemy in level[3]:
+        enemies.append(enemy)
+    player.x = level[4][0]
+    player.y = level[4][1]
+
+def draw_grid(world):
+    gridfont = pygame.font.SysFont('0', 20)
+    for x in range(64, worldx, 32):
+        xlabel = gridfont.render(str(x), 2, black)
+        world.blit(xlabel, (x, 32))
+        world.blit(xlabel, (x, 320))
+        world.blit(xlabel, (x, 704))
+        world.blit(xlabel, (x, 1068))
+
+        pygame.draw.line(world, black, (x, 0), (x, worldy))
+    for y in range(64, worldy, 32):
+        ylabel = gridfont.render(str(y), 2, black)
+        world.blit(ylabel, (16, y))
+        world.blit(ylabel, (480, y))
+        world.blit(ylabel, (960, y))
+        world.blit(ylabel, (1960, y))
+
+        pygame.draw.line(world, black, (0, y), (worldx, y))
+
+
+def display_grid(grid_on):
+    if grid_on == False:
+        grid_on = True
+    else:
+        grid_on = False
+    return grid_on
 
 """
 SETUP
@@ -473,6 +552,8 @@ backdropbox = world.get_rect()
 ground = (os.path.join('images', 'full_ground1920x64.png'))
 sml_platform = (os.path.join('images', '1TilePlatform64x64.png'))
 mdm_platform = (os.path.join('images', '2TilePlatform128x64.png'))
+grid_on = False
+
 
 # key presses
 
@@ -486,32 +567,101 @@ red = (227, 41, 44)
 black = (0, 0, 0)
 blue = (41, 156, 227)
 
-# create world objects
-objects = []
-enemies = []
-coins = []
 
-player = Player(0, 0)
-enemies.append(red_guy(300, 400))
-enemies.append(blue_guy(200, 400))
+"""
+LEVEL CREATION
+"""
+level_platforms = []
+level_coins = []
+level_chest = []
+level_enemies = []
+level_player = []
 
 
-objects.append(Object(0, worldy-64, 1920, 64, ground, "ground"))
-objects.append(Object(0, 348, 128, 64, mdm_platform, "platform one"))
-objects.append(Object(184, 284, 64, 64, sml_platform, "platform two"))
-objects.append(Object(312, 156, 64, 64, sml_platform, "platform three"))
-objects.append(Object(440, 28, 64, 64, sml_platform, "platform four"))
+level_platforms.append(platforms.platform(0, worldy-64, 1920, 64, ground, "ground"))
+level_platforms.append(platforms.platform(0, 348, 128, 64, mdm_platform, "platform one"))
+level_platforms.append(platforms.platform(160, 288, 64, 64, sml_platform, "platform two"))
+level_platforms.append(platforms.platform(320, 160, 64, 64, sml_platform, "platform three"))
+level_platforms.append(platforms.platform(446, 96, 64, 64, sml_platform, "platform four"))
+level_platforms.append(platforms.platform(1664, 832, 128, 64, mdm_platform, "platform five"))
+level_platforms.append(platforms.platform(1408, 704, 128, 64, mdm_platform, 'platform six'))
+level_platforms.append(platforms.platform(1152, 512, 128, 64, mdm_platform, 'platform seven'))
+level_platforms.append(platforms.platform(896, 384, 128, 64, mdm_platform, 'platform eight'))
+level_platforms.append(platforms.platform(worldx-64, 960, 64, 64, sml_platform, 'platform nine'))
+level_platforms.append(platforms.platform(1280, 640, 64, 64, sml_platform, 'platform ten'))
+level_platforms.append(platforms.platform(1088, 512, 64, 64, sml_platform, 'platform ten'))
+level_platforms.append(platforms.platform(1536, 768, 64, 64, sml_platform, 'platform ten'))
+level_platforms.append(platforms.platform(640, 640, 128, 64, mdm_platform, 'platform eight'))
+level_platforms.append(platforms.platform(448, 448, 64, 64, sml_platform, "platform two"))
+level_platforms.append(platforms.platform(576, 576, 64, 64, sml_platform, "platform two"))
+level_platforms.append(platforms.platform(320, 320, 64, 64, sml_platform, "platform two"))
 
-coins.append(Coin(200, 240))
-coins.append(Coin(325, 110))
-coins.append(Coin(445, 0))
+
+for i in level_platforms:
+    cx = i.x + 12
+    cy = i.y - 22
+    if i.width == 64 or i.width == 128:
+        level_coins.append(Coin(cx, cy))
+    if i.width == 128:
+        level_coins.append(Coin(cx+64, cy))
+"""
+level_coins.append(Coin(32, 320))
+level_coins.append(Coin(96, 320))
+level_coins.append(Coin(192, 256))
+level_coins.append(Coin(352, 288))
+level_coins.append(Coin(480, 416))
+level_coins.append(Coin(576, 544))
+level_coins.append(Coin(640, 608))
+level_coins.append(Coin(704, 608))
+level_coins.append(Coin(445, 0))
+level_coins.append(Coin(200, 240))
+level_coins.append(Coin(325, 110))
+level_coins.append(Coin(445, 0))
+level_coins.append(Coin(200, 240))
+level_coins.append(Coin(325, 110))
+level_coins.append(Coin(445, 0))
+level_coins.append(Coin(200, 240))
+level_coins.append(Coin(325, 110))
+level_coins.append(Coin(445, 0))
+"""
+
 coin_x = 100
 for i in range(0, 15):
-    coins.append(Coin(coin_x, 440))
+    level_coins.append(Coin(coin_x, worldy-100))
     coin_x += 40
 
+level_enemies.append(red_guy(300, 400))
+level_enemies.append(blue_guy(200, 400))
 
+level_player = [worldx - 100, worldy-200]
+
+demo_level = [level_platforms, level_coins, level_chest, level_enemies, level_player]
+
+
+
+
+
+
+
+
+
+
+
+
+# create world platforms.platforms
+platforms = []
+coins = []
+chest = []
+enemies = []
+projectiles = []
+player = Player(0,0)
+
+
+
+
+load_level(demo_level)
 main = True
+
 
 """
 Main Loop
@@ -530,6 +680,8 @@ while main is True:
             if event.key == ord('q'):
                 main = False
                 sys.exit()
+            if event.key == pygame.K_g:
+                grid_on = display_grid(grid_on)
             if event.key == pygame.K_SPACE:
                 player.jump()
             if event.key == pygame.K_RIGHT:
