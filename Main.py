@@ -2,7 +2,7 @@ import pygame
 import sys
 import os
 import spritesheet
-import platforms
+import p_forms
 
 
 
@@ -24,7 +24,7 @@ class HUD(object):
             self.coin_ani[i] = pygame.transform.scale(self.coin_ani[i], (40,40))
 
     def draw(self, world):
-        coin_score = self.font.render(str(player.coin_count), 2, (245, 227, 66))
+        coin_score = self.font.render(str(player.coin_count), 2, black)
         score_width = coin_score.get_width()
         world.blit(coin_score, (worldx - 5 - score_width, 5))
         """
@@ -151,8 +151,10 @@ class Player(object):
         self.direction = 0
 
 
-    def hit(self):
-        pass
+    def hit(self, projectile):
+        self.hp -= projectile.damage
+        projectiles.remove(projectile)
+        print("hp: {h}".format(h=self.hp))
 
 
 class enemy(object):
@@ -312,7 +314,9 @@ class red_guy(enemy):
         self.max_jump_vel = 20
         self.jump_vel = self.max_jump_vel
         self.throw_count = 0
-
+        self.ledges = []
+        self.closest_ledge = [worldx, worldy, 'l']
+        self.find_ledges()
 
 
         for i in range(0, len(self.jump_img)):
@@ -338,6 +342,13 @@ class red_guy(enemy):
         if self.throw_count >= 100 and len(projectiles) < 5:
             self.throw_acorn()
             self.throw_count = 0
+
+
+    def find_ledges(self):
+        for i in level_platforms:
+            self.ledges.append([i.x, i.surface, 'l'])
+            self.ledges.append([i.x+i.width, i.surface, 'r'])
+
 
 
     def throw_acorn(self):
@@ -450,16 +461,25 @@ class projectile(object):
         self.img = 0
         self.img_count = 0
         self.vel = 1
+        self.width = 0
+        self.height = 0
+        self.damage = 0
 
     def draw(self, world):
         self.move()
-        world.blit(self.img, (self.x, self.y))
+        self.hit()
+        world.blit(self.img, (round(self.x), round(self.y)))
 
 
     def move(self):
         z = self.vel / (abs(self.dx) + abs(self.dy))
         self.x += self.dx * z
         self.y += self.dy * z
+
+    def hit(self):
+        if self.x + self.width > player.x and self.x < player.x + player.width  and self.y + self.height > player.y and self.y < player.y + player.height:
+            player.hit(self)
+            print("hit!")
 
 
 class acorn(projectile):
@@ -473,6 +493,10 @@ class acorn(projectile):
         self.img = self.ass.image_at((0, 0, 24, 19), (0, 0, 0))
         self.vel = 10
         self.img_count = 0
+        self.damage = 1
+        self.width = self.img.get_width()
+        self.height = self.img.get_height()
+
 
 
 def draw_world(world):
@@ -488,9 +512,10 @@ def draw_world(world):
     for proj in projectiles:
         proj.draw(world)
         if proj.x > worldx or proj.y > worldy or proj.x < 0 or proj.y < 0:
-            print("x: {x}, y: {y}".format(x=proj.x, y=proj.y))
             projectiles.remove(proj)
-            print('pop!')
+
+    for l in enemies[0].ledges:
+        pygame.draw.circle(world, red, (l[0], l[1]), 4)
 
     if grid_on == True:
         draw_grid(world)
@@ -578,23 +603,23 @@ level_enemies = []
 level_player = []
 
 
-level_platforms.append(platforms.platform(0, worldy-64, 1920, 64, ground, "ground"))
-level_platforms.append(platforms.platform(0, 348, 128, 64, mdm_platform, "platform one"))
-level_platforms.append(platforms.platform(160, 288, 64, 64, sml_platform, "platform two"))
-level_platforms.append(platforms.platform(320, 160, 64, 64, sml_platform, "platform three"))
-level_platforms.append(platforms.platform(446, 96, 64, 64, sml_platform, "platform four"))
-level_platforms.append(platforms.platform(1664, 832, 128, 64, mdm_platform, "platform five"))
-level_platforms.append(platforms.platform(1408, 704, 128, 64, mdm_platform, 'platform six'))
-level_platforms.append(platforms.platform(1152, 512, 128, 64, mdm_platform, 'platform seven'))
-level_platforms.append(platforms.platform(896, 384, 128, 64, mdm_platform, 'platform eight'))
-level_platforms.append(platforms.platform(worldx-64, 960, 64, 64, sml_platform, 'platform nine'))
-level_platforms.append(platforms.platform(1280, 640, 64, 64, sml_platform, 'platform ten'))
-level_platforms.append(platforms.platform(1088, 512, 64, 64, sml_platform, 'platform ten'))
-level_platforms.append(platforms.platform(1536, 768, 64, 64, sml_platform, 'platform ten'))
-level_platforms.append(platforms.platform(640, 640, 128, 64, mdm_platform, 'platform eight'))
-level_platforms.append(platforms.platform(448, 448, 64, 64, sml_platform, "platform two"))
-level_platforms.append(platforms.platform(576, 576, 64, 64, sml_platform, "platform two"))
-level_platforms.append(platforms.platform(320, 320, 64, 64, sml_platform, "platform two"))
+level_platforms.append(p_forms.platform(0, worldy-64, 1920, 64, ground, "ground"))
+level_platforms.append(p_forms.platform(0, 348, 128, 64, mdm_platform, "platform one"))
+level_platforms.append(p_forms.platform(160, 288, 64, 64, sml_platform, "platform two"))
+level_platforms.append(p_forms.platform(320, 160, 64, 64, sml_platform, "platform three"))
+level_platforms.append(p_forms.platform(446, 96, 64, 64, sml_platform, "platform four"))
+level_platforms.append(p_forms.platform(1664, 832, 128, 64, mdm_platform, "platform five"))
+level_platforms.append(p_forms.platform(1408, 704, 128, 64, mdm_platform, 'platform six'))
+level_platforms.append(p_forms.platform(1152, 512, 128, 64, mdm_platform, 'platform seven'))
+level_platforms.append(p_forms.platform(896, 384, 128, 64, mdm_platform, 'platform eight'))
+level_platforms.append(p_forms.platform(worldx-64, 960, 64, 64, sml_platform, 'platform nine'))
+level_platforms.append(p_forms.platform(1280, 640, 64, 64, sml_platform, 'platform ten'))
+level_platforms.append(p_forms.platform(1088, 512, 64, 64, sml_platform, 'platform ten'))
+level_platforms.append(p_forms.platform(1536, 768, 64, 64, sml_platform, 'platform ten'))
+level_platforms.append(p_forms.platform(640, 640, 128, 64, mdm_platform, 'platform eight'))
+level_platforms.append(p_forms.platform(448, 448, 64, 64, sml_platform, "platform two"))
+level_platforms.append(p_forms.platform(576, 576, 64, 64, sml_platform, "platform two"))
+level_platforms.append(p_forms.platform(320, 320, 64, 64, sml_platform, "platform two"))
 
 
 for i in level_platforms:
