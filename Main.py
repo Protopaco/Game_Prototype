@@ -3,6 +3,7 @@ import sys
 import os
 import spritesheet
 import p_forms
+import math
 
 
 
@@ -50,11 +51,47 @@ class Player(object):
         self.is_jump = False
         self.height = 48
         self.width = 33
-        self.gravity = uni_gravity
-        self.jump_vel = uni_jump_vel
+        self.gravity = uni_grav_acel
+        self.max_jump_vel = 20
+        self.jump_vel = self.max_jump_vel
         self.is_falling = False
         self.vel = uni_run_vel
         self.coin_count = 0
+        self.jump_height = self.find_max_height()
+        self.ledges = []
+        self.chosen_ledge = [worldx, worldy, 'x']
+        self.current_platform = [(0,0), (0,0)]
+        self.find_ledges()
+        self.choose_ledge()
+
+
+    def find_ledges(self):
+        for i in level_platforms:
+            self.ledges.append([i.x, i.surface, 'l'])
+            self.ledges.append([i.x+i.width, i.surface, 'r'])
+
+
+    def choose_ledge(self):
+        if abs(self.chosen_ledge[1] - (self.y + self.height)) < self.jump_height + self.height:
+            self.chosen_ledge = [worldx, worldy, 'x']
+        for i in self.ledges:
+            height_diff = i[1] - (self.y + self.height)
+            if height_diff < 0 and abs(height_diff) < self.jump_height - self.height:
+                if abs(self.x - self.chosen_ledge[0]) > abs(self.x - i[0]):
+                    self.chosen_ledge = [i[0], i[1], i[2]]
+
+        print(self.chosen_ledge)
+
+
+    def find_max_height(self):
+        max_height = 0
+        while self.jump_vel > 0:
+            max_height += self.jump_vel
+            self.jump_vel -= uni_grav_acel
+        self.jump_vel = self.max_jump_vel
+        return round(max_height)
+
+
 
     def draw(self, world):
         self.move()
@@ -71,6 +108,7 @@ class Player(object):
 
 
     def move(self):
+        self.choose_ledge()
         # Walking Right
         if self.direction == 1:
             #print("move right")
@@ -83,21 +121,19 @@ class Player(object):
 
         # Jumping
         if self.is_jump is True:
-            #print("jumping!")
             if self.collision(0, self.jump_vel * - 1):
                 self.is_jump = False
-            self.jump_vel -= uni_gravity
+            self.jump_vel -= uni_grav_acel
 
         # Gravity
         if not self.is_jump:
             self.not_falling = self.collision(0, self.gravity)
             if not self.not_falling:
                 self.gravity += uni_grav_acel
-                #print("falling")
             else:
-                self.gravity = uni_gravity
+                self.gravity = uni_grav_acel
                 self.is_jump = False
-                self.jump_vel = uni_jump_vel
+                self.jump_vel = self.max_jump_vel
 
         # Coin Collision
         for coin in coins:
@@ -118,10 +154,10 @@ class Player(object):
                 collision = True
             elif self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height > platforms[count].dimensions[2] - y and self.y + y < platforms[count].dimensions[3]:
                 collision = True
-                #print(platforms.platforms[count].label)
                 self.y = platforms[count].dimensions[2] + self.height
                 self.x += x
-                #print(self.y)
+                self.current_platform[0] = (platforms[count].dimensions[0], platforms[count].dimensions[2])
+                self.current_platform[1] = (platforms[count].dimensions[1], platforms[count].dimensions[2])
             count += 1
         if collision == False:
             self.x += x
@@ -172,11 +208,12 @@ class enemy(object):
         self.max_hp = 0
         self.height = 0
         self.width = 0
-        self.gravity = uni_gravity
+        self.gravity = uni_grav_acel
         self.jump_vel = 0
-        self.is_falling = False
+        self.is_falling = True
         self.run_count = 0
         self.max_jump_vel = 0
+        self.current_platform = [(0,0), (0,0)]
 
 
     def draw(self, world):
@@ -217,17 +254,18 @@ class enemy(object):
             if self.collision(0, self.jump_vel * - 1):
                 self.is_jump = False
                 #self.jump_vel = self.max_jump_vel
-            self.jump_vel -= uni_gravity
+            self.jump_vel -= uni_grav_acel
 
         # Gravity
         if not self.is_jump:
-            self.not_falling = self.collision(0, self.gravity)
-            if not self.not_falling:
-                self.gravity += uni_grav_acel
-                #print("falling")
+            if self.collision(0, self.gravity) == False:
+                self.is_falling = True
+                if self.is_falling:
+                    self.gravity += uni_grav_acel
             else:
-                self.gravity = uni_gravity
+                self.gravity = uni_grav_acel
                 self.is_jump = False
+                self.is_falling = False
                 self.jump_vel = uni_jump_vel
 
 
@@ -235,10 +273,11 @@ class enemy(object):
     def collision(self, x, y):
         collision = False
         count = 0
-        #print("collision: {x}, {y}".format(x=x, y=y))
         while collision is False and count < len(platforms):
             if self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height + y > platforms[count].dimensions[2] and self.y + y < platforms[count].dimensions[3]:
                 collision = True
+                self.current_platform[0] = (platforms[count].dimensions[0], platforms[count].dimensions[2])
+                self.current_platform[1] = (platforms[count].dimensions[1], platforms[count].dimensions[2])
             elif self.x + x < 0 or self.x + self.width + x > worldx:
                 collision = True
             elif self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height > platforms[count].dimensions[2] - y and self.y + y < platforms[count].dimensions[3]:
@@ -246,7 +285,8 @@ class enemy(object):
                 #print(platforms.platforms[count].label)
                 self.y = platforms[count].dimensions[2] + self.height
                 self.x += x
-                #print(self.y)
+                self.current_platform[0] = (platforms[count].dimensions[0], platforms[count].dimensions[2])
+                self.current_platform[1] = (platforms[count].dimensions[1], platforms[count].dimensions[2])
             count += 1
         if collision == False:
             self.x += x
@@ -308,15 +348,19 @@ class red_guy(enemy):
         self.width = 48
         self.height = 48
         self.is_jump = False
-        self.gravity = uni_gravity
+        self.gravity = uni_grav_acel
         self.run_count = 0
         self.idle_count = 0
         self.max_jump_vel = 20
         self.jump_vel = self.max_jump_vel
         self.throw_count = 0
         self.ledges = []
-        self.closest_ledge = [worldx, worldy, 'l']
+        self.chosen_ledge = [worldx, worldy, 'x']
+        self.current_platform = [(0,0), (0,0)]
+        self.jump_point = 0
         self.find_ledges()
+        self.jump_height, self.jump_width = self.find_max_height()
+
 
 
         for i in range(0, len(self.jump_img)):
@@ -329,7 +373,24 @@ class red_guy(enemy):
         for i in range(0, len(self.run_r)):
             self.run_l.append(pygame.transform.flip(self.run_r[i], True, False))
 
+
+    def find_max_height(self):
+        max_height = 0
+        max_width = 0
+        while self.jump_vel > 0:
+            self.jump_vel -= uni_grav_acel
+            max_height += self.jump_vel
+            max_width += self.vel
+
+        self.jump_vel = self.max_jump_vel
+        print("max_height: {m}".format(m = max_height))
+        test_max = ((self.max_jump_vel ** 2) * (math.sin(90) ** 2)) / (2 * uni_grav_acel)
+        print("test_max: {t}".format(t = test_max))
+        return round(max_height), round(max_width)
+
+
     def ai(self):
+        """
         if self.x + 10 < player.x:
             self.move_right()
         elif self.x - 10 > player.x:
@@ -338,16 +399,56 @@ class red_guy(enemy):
             self.stand()
         if self.y > player.y and pygame.time.get_ticks() % 100 == 0:
             self.jump()
+        """
         self.throw_count += 1
         if self.throw_count >= 100 and len(projectiles) < 5:
             self.throw_acorn()
             self.throw_count = 0
+        if self.is_jump == False and self.is_falling == False:
+            self.choose_ledge()
+            if self.x + self.width < self.chosen_ledge[0]:
+                self.move_right()
+                if self.x + self.width >= self.jump_point:
+                    self.jump()
+            else:
+                self.move_left()
+
+
+    def find_jump_point(self):
+        height_diff = self.chosen_ledge[1] - (self.y + self.height)
+        jump_width = 0
+        while height_diff < 0:
+            height_diff += self.jump_vel - uni_grav_acel
+            jump_width += self.vel
+            print("jump_width: {j}".format(j=jump_width))
+        self.jump_point = self.chosen_ledge[0] - jump_width
+
 
 
     def find_ledges(self):
         for i in level_platforms:
             self.ledges.append([i.x, i.surface, 'l'])
             self.ledges.append([i.x+i.width, i.surface, 'r'])
+
+
+    def choose_ledge(self):
+        if abs(self.chosen_ledge[1] - (self.y + self.height)) < self.jump_height + self.height:
+            self.chosen_ledge = [worldx, worldy, 'x']
+        for i in self.ledges:
+            height_diff = i[1] - (self.y + self.height)
+            if height_diff < 0 and abs(height_diff) < self.jump_height - self.height:
+                if abs(self.x - self.chosen_ledge[0]) > abs(self.x - i[0]):
+                    self.chosen_ledge = [i[0], i[1], i[2]]
+        self.find_jump_point()
+        print(self.jump_point)
+
+        print(self.chosen_ledge)
+
+
+
+
+
+
 
 
 
@@ -384,7 +485,7 @@ class blue_guy(enemy):
         self.width = 48
         self.height = 48
         self.is_jump = False
-        self.gravity = uni_gravity
+        self.gravity = uni_grav_acel
         self.run_count = 0
         self.idle_count = 0
         self.max_jump_vel = 20
@@ -449,7 +550,7 @@ class Coin(object):
         return collision
 
     def gravity(self):
-        if self.collision(uni_gravity) is True:
+        if self.collision(uni_grav_acel) is True:
             self.settled = True
 
 class projectile(object):
@@ -514,11 +615,18 @@ def draw_world(world):
         if proj.x > worldx or proj.y > worldy or proj.x < 0 or proj.y < 0:
             projectiles.remove(proj)
 
-    for l in enemies[0].ledges:
-        pygame.draw.circle(world, red, (l[0], l[1]), 4)
+    pygame.draw.circle(world, black, (player.chosen_ledge[0], player.chosen_ledge[1]), 4)
+    pygame.draw.circle(world, red, (enemies[0].chosen_ledge[0], enemies[0].chosen_ledge[1]), 4)
+    pygame.draw.circle(world, blue, enemies[0].current_platform[0], 4)
+    pygame.draw.circle(world, blue, enemies[0].current_platform[1], 4)
+
+    pygame.draw.circle(world, blue, player.current_platform[0], 4)
+    pygame.draw.circle(world, blue, player.current_platform[1], 4)
+
 
     if grid_on == True:
-        draw_grid(world)
+            draw_grid(world)
+
 
 def load_level(level):
     for platform in level[0]:
@@ -583,7 +691,6 @@ grid_on = False
 # key presses
 
 # world variables
-uni_gravity = 1
 uni_jump_vel = 16
 uni_grav_acel = 1.1
 uni_run_vel = 5
@@ -655,7 +762,7 @@ for i in range(0, 15):
     level_coins.append(Coin(coin_x, worldy-100))
     coin_x += 40
 
-level_enemies.append(red_guy(300, 400))
+level_enemies.append(red_guy(800, 900))
 level_enemies.append(blue_guy(200, 400))
 
 level_player = [worldx - 100, worldy-200]
