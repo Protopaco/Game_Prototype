@@ -80,7 +80,7 @@ class Player(object):
                 if abs(self.x - self.chosen_ledge[0]) > abs(self.x - i[0]):
                     self.chosen_ledge = [i[0], i[1], i[2]]
 
-        print(self.chosen_ledge)
+        #print(self.chosen_ledge)
 
 
     def find_max_height(self):
@@ -331,6 +331,7 @@ class enemy(object):
 class red_guy(enemy):
     def __init__(self, x, y):
         enemy.__init__(self, x, y)
+        # loading sprites
         self.bs = spritesheet.spritesheet(os.path.join('images/red_guy', 'blink.png'))
         self.rs = spritesheet.spritesheet(os.path.join('images/red_guy', 'run_r.png'))
         self.js = spritesheet.spritesheet(os.path.join('images/red_guy', 'jump.png'))
@@ -340,6 +341,7 @@ class red_guy(enemy):
         self.idle = self.bs.load_strip((0, 0, 100, 100),  11, (0, 0, 0))
         self.jump_img = self.js.load_strip((0, 0, 100, 100), 2, (0, 0, 0))
         self.run_l = []
+        # character variables
         self.walk_count = 0
         self.vel = 3
         self.x = x
@@ -355,11 +357,14 @@ class red_guy(enemy):
         self.jump_vel = self.max_jump_vel
         self.throw_count = 0
         self.ledges = []
-        self.chosen_ledge = [worldx, worldy, 'x']
-        self.current_platform = [(0,0), (0,0)]
-        self.jump_point = 0
         self.find_ledges()
         self.jump_height, self.jump_width = self.find_max_height()
+        self.chosen_ledge = []
+        self.jump_point = 1900
+        self.choose_ledge()
+        self.current_platform = [(0,0), (0,0)]
+        self.find_ledges()
+
 
 
 
@@ -369,7 +374,6 @@ class red_guy(enemy):
             self.idle[i] = pygame.transform.scale(self.idle[i], (48,48))
         for i in range(0, len(self.run_r)):
             self.run_r[i] = pygame.transform.scale(self.run_r[i], (48,48))
-
         for i in range(0, len(self.run_r)):
             self.run_l.append(pygame.transform.flip(self.run_r[i], True, False))
 
@@ -383,71 +387,87 @@ class red_guy(enemy):
             max_width += self.vel
 
         self.jump_vel = self.max_jump_vel
-        print("max_height: {m}".format(m = max_height))
+        #print("max_height: {m}".format(m = max_height))
         test_max = ((self.max_jump_vel ** 2) * (math.sin(90) ** 2)) / (2 * uni_grav_acel)
-        print("test_max: {t}".format(t = test_max))
+        #print("test_max: {t}".format(t = test_max))
         return round(max_height), round(max_width)
 
 
     def ai(self):
-        """
-        if self.x + 10 < player.x:
-            self.move_right()
-        elif self.x - 10 > player.x:
-            self.move_left()
-        else:
-            self.stand()
-        if self.y > player.y and pygame.time.get_ticks() % 100 == 0:
-            self.jump()
-        """
+
         self.throw_count += 1
         if self.throw_count >= 100 and len(projectiles) < 5:
             self.throw_acorn()
             self.throw_count = 0
-        if self.is_jump == False and self.is_falling == False:
-            self.choose_ledge()
-            if self.x + self.width < self.chosen_ledge[0]:
-                self.move_right()
+        if self.x + self.width < self.chosen_ledge[0]:
+            self.move_right()
+            print("right>")
+            if self.is_jump == False and self.is_falling == False:
                 if self.x + self.width >= self.jump_point:
                     self.jump()
-            else:
-                self.move_left()
+                    print("jump")
+        elif self.x > self.chosen_ledge[0]:
+            self.move_left()
+            print("left<")
+            if self.is_jump == False and self.is_falling == False:
+                if self.x <= self.jump_point:
+                    self.jump()
+                    print("jump")
+        else:
+            self.stand()
+            #print("stand")
+            self.choose_ledge()
+        if self.chosen_ledge[1] > self.y:
+            self.choose_ledge()
 
 
     def find_jump_point(self):
         height_diff = self.chosen_ledge[1] - (self.y + self.height)
         jump_width = 0
-        while height_diff < 0:
+        while height_diff < 0 and height_diff > -2000:
             height_diff += self.jump_vel - uni_grav_acel
             jump_width += self.vel
-            print("jump_width: {j}".format(j=jump_width))
-        self.jump_point = self.chosen_ledge[0] - jump_width
+        if self.chosen_ledge[2] == 'l':
+            if self.chosen_ledge[0] - jump_width > self.current_platform[0][0]:
+                self.jump_point = self.chosen_ledge[0] - jump_width
+            else:
+                self.jump_point = self.current_platform[0][0]
+        else:
+            if self.chosen_ledge[0] + jump_width > self.current_platform[0][0]:
+                #print("here?")
+                self.jump_point = self.chosen_ledge[0] + jump_width
+            else:
+                print("here?")
+                self.jump_point = self.current_platform[0][0]
+
 
 
 
     def find_ledges(self):
         for i in level_platforms:
-            self.ledges.append([i.x, i.surface, 'l'])
-            self.ledges.append([i.x+i.width, i.surface, 'r'])
+            if i.label != 'ground':
+                self.ledges.append([i.x, i.surface, 'l'])
+                self.ledges.append([i.x+i.width, i.surface, 'r'])
 
 
     def choose_ledge(self):
-        if abs(self.chosen_ledge[1] - (self.y + self.height)) < self.jump_height + self.height:
-            self.chosen_ledge = [worldx, worldy, 'x']
-        for i in self.ledges:
-            height_diff = i[1] - (self.y + self.height)
-            if height_diff < 0 and abs(height_diff) < self.jump_height - self.height:
-                if abs(self.x - self.chosen_ledge[0]) > abs(self.x - i[0]):
-                    self.chosen_ledge = [i[0], i[1], i[2]]
+        print("choosing!")
+        for ledge in self.ledges:
+            height_diff = ledge[1] - (self.y + (self.height/2))
+            width_diff = ledge[0] - (self.x + (self.width/2))
+            if self.chosen_ledge == []:
+                self.chosen_ledge = ledge
+            elif height_diff < 0 and abs(height_diff) < self.jump_height - self.height: #and abs(height_diff) < abs(self.chosen_ledge[1] - (self.y + self.height/2)):
+                if self.x > ledge[0] and ledge[2] == 'r':
+                    print("r> {l}".format(l=ledge))
+                    self.chosen_ledge = ledge
+                elif self.x < ledge[0] and ledge[2] == 'l':
+                    print("l< {l}".format(l=ledge))
+                    self.chosen_ledge = ledge
+
+        #print("current_ledge: {l}".format(l=self.chosen_ledge))
         self.find_jump_point()
-        print(self.jump_point)
-
-        print(self.chosen_ledge)
-
-
-
-
-
+        #print("Jump_point: {j}".format(j=self.jump_point))
 
 
 
@@ -458,10 +478,6 @@ class red_guy(enemy):
         z = 100 / (abs(tx) + abs(ty))
         dx = tx * z
         dy = ty * z
-        #print('player({x}, {y})'.format(x=player.x, y=player.y))
-        #print('self({x}, {y})'.format(x=self.x, y=self.y))
-        #print("dx: {x}, dy: {y}".format(x=dx, y=dy))
-        #print("throw!")
         projectiles.append(acorn(self.x, self.y, dx, dy))
 
 
@@ -490,6 +506,7 @@ class blue_guy(enemy):
         self.idle_count = 0
         self.max_jump_vel = 20
         self.jump_vel = self.max_jump_vel
+        self.throw_count = 0
 
 
 
@@ -510,8 +527,32 @@ class blue_guy(enemy):
             self.move_right()
         else:
             self.stand()
+        self.throw_count += 1
+        print(self.throw_count)
+        if self.throw_count >= 100 and len(projectiles) < 5:
+            self.throw_acorn()
+            print("throw!")
+            self.throw_count = 0
         if self.y <= player.y and pygame.time.get_ticks() % 100 == 0:
             self.jump()
+
+
+
+
+    def throw_acorn(self):
+        if player.direction == 0:
+            tx = player.x - self.x
+            ty = player.y - self.y
+        elif player.direction == 1:
+            tx = (player.x - self.x)
+            ty = player.y - self.y
+        else:
+            tx = (player.x - self.x)
+            ty = player.y - self.y
+        z = 100 / (abs(tx) + abs(ty))
+        dx = tx * z
+        dy = ty * z
+        projectiles.append(acorn(self.x, self.y, dx, dy))
 
 class Coin(object):
     def __init__(self, x, y):
@@ -615,13 +656,13 @@ def draw_world(world):
         if proj.x > worldx or proj.y > worldy or proj.x < 0 or proj.y < 0:
             projectiles.remove(proj)
 
-    pygame.draw.circle(world, black, (player.chosen_ledge[0], player.chosen_ledge[1]), 4)
+    #pygame.draw.circle(world, black, (player.chosen_ledge[0], player.chosen_ledge[1]), 4)
     pygame.draw.circle(world, red, (enemies[0].chosen_ledge[0], enemies[0].chosen_ledge[1]), 4)
     pygame.draw.circle(world, blue, enemies[0].current_platform[0], 4)
     pygame.draw.circle(world, blue, enemies[0].current_platform[1], 4)
-
-    pygame.draw.circle(world, blue, player.current_platform[0], 4)
-    pygame.draw.circle(world, blue, player.current_platform[1], 4)
+    #print("jp: {j}".format(j=enemies[0].jump_point))
+    pygame.draw.circle(world, black, (enemies[0].jump_point, enemies[0].chosen_ledge[1]), 4)
+    #pygame.draw.circle(world, blue, player.current_platform[1], 4)
 
 
     if grid_on == True:
@@ -762,8 +803,8 @@ for i in range(0, 15):
     level_coins.append(Coin(coin_x, worldy-100))
     coin_x += 40
 
-level_enemies.append(red_guy(800, 900))
-level_enemies.append(blue_guy(200, 400))
+level_enemies.append(red_guy(1400, 900))
+#level_enemies.append(blue_guy(200, 400))
 
 level_player = [worldx - 100, worldy-200]
 
