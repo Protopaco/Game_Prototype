@@ -2,8 +2,6 @@ import pygame
 import sys
 import os
 import spritesheet
-import p_forms
-import math
 
 
 
@@ -14,27 +12,30 @@ platforms.platformS
 class HUD(object):
     def __init__(self):
         self.font = pygame.font.Font('ARCADECLASSIC.TTF', 42)
-        self.coin_still = pygame.image.load(os.path.join('images/object', 'coin_still100.png'))
-        self.coin_still = pygame.transform.scale(self.coin_still, (40, 40))
-        self.coin_still_width = self.coin_still.get_width()
+        self.hs = spritesheet.spritesheet(os.path.join('images/object', 'health_bar.png'))
+        self.health_bar = self.hs.load_strip((0, 0, 100, 100), 2, (0, 0, 0))
         self.cs = spritesheet.spritesheet(os.path.join('images/object', 'coin100.png'))
         self.coin_ani_count = 0
         self.coin_rotation_rate = .2
         self.coin_ani = self.cs.load_strip((0, 0, 100, 100), 16, (0, 0, 0))
+        self.coin_width = 40
         for i in range(0, len(self.coin_ani)):
             self.coin_ani[i] = pygame.transform.scale(self.coin_ani[i], (40,40))
 
     def draw(self, world):
-        coin_score = self.font.render(str(player.coin_count), 2, black)
+        coin_score = self.font.render(str(player.coin_count), 2, white)
         score_width = coin_score.get_width()
         world.blit(coin_score, (worldx - 5 - score_width, 5))
-        """
-        world.blit(self.coin_still, (worldx - 5 - score_width - 5 - self.coin_still_width, 5))
-        """
-        world.blit(self.coin_ani[round(self.coin_ani_count)], (worldx - 5 - score_width - 5 - self.coin_still_width, 5))
+        world.blit(self.coin_ani[round(self.coin_ani_count)], (worldx - 5 - score_width - 5 - self.coin_width, 5))
         self.coin_ani_count += self.coin_rotation_rate
         if self.coin_ani_count >= len(self.coin_ani) -1:
             self.coin_ani_count = 0
+        self.health_bar[0] = pygame.transform.scale(self.health_bar[0], (int((player.hp / player.max_hp)* 100), 100))
+        print(int((player.hp / player.max_hp) * 100))
+        world.blit(self.health_bar[1], (worldx - 105, 10))
+        world.blit(self.health_bar[0], (worldx - 105, 10))
+
+
 
 # classes and functions
 class Player(object):
@@ -191,7 +192,22 @@ class Player(object):
         self.hp -= projectile.damage
         projectiles.remove(projectile)
         print("hp: {h}".format(h=self.hp))
+        
+class Platform(object):
+    def __init__(self, x, y, width, height, filename, label):
+        self.x = x
+        self.y = y
+        self.img = pygame.image.load(filename)
+        self.width = width
+        self.height = height
+        self.surface = y + 14
+        self.label = label
+        self.right_edge = self.x + self.width
+        self.bottom_edge = self.y + self.height
+        self.dimensions = [self.x, self.right_edge, self.surface, self.bottom_edge]
 
+    def draw(self, world):
+        world.blit(self.img, (self.x, self.y))
 
 class enemy(object):
     def __init__(self, x, y):
@@ -201,7 +217,8 @@ class enemy(object):
         self.direction = 0
         self.run_r = []
         self.run_l = []
-        self.jump_img = []
+        self.jump_r = []
+        self.jump_l = []
         self.idle = []
         self.vel = 0
         self.hp = 0
@@ -218,10 +235,16 @@ class enemy(object):
 
     def draw(self, world):
         self.move()
-        if self.is_jump and self.jump_vel > 1:
-            world.blit(self.jump_img[0], (self.x, self.y))
-        elif self.is_jump and self.jump_vel < 1:
-            world.blit(self.jump_img[1], (self.x, self.y))
+        if self.is_jump and self.jump_vel > 0:
+            if self.direction >= 0:
+                world.blit(self.jump_r[0], (self.x, self.y))
+            else:
+                world.blit(self.jump_l[0], (self.x, self.y))
+        elif self.is_jump and self.jump_vel < 0:
+            if self.direction >= 0:
+                world.blit(self.jump_r[1], (self.x, self.y))
+            else:
+                world.blit(self.jump_l[1], (self.x, self.y))
         elif self.direction == 0:
             if self.idle_count > len(self.idle)-1:
                 self.idle_count = 0
@@ -240,12 +263,12 @@ class enemy(object):
         self.ai()
         # Walking Right
         if self.direction == 1:
-            #print("move right")
+            #print("right>")
             self.collision(self.vel, 0)
 
         # Walking Left
         elif self.direction == -1:
-            #print("move left")
+            #print("left<")
             self.collision(self.vel * -1, 0)
 
         # Jumping
@@ -253,7 +276,8 @@ class enemy(object):
             #print("jumping!")
             if self.collision(0, self.jump_vel * - 1):
                 self.is_jump = False
-                #self.jump_vel = self.max_jump_vel
+                self.jump_vel = self.max_jump_vel
+                #print("jump: {j}".format(j=self.jump_vel))
             self.jump_vel -= uni_grav_acel
 
         # Gravity
@@ -266,7 +290,7 @@ class enemy(object):
                 self.gravity = uni_grav_acel
                 self.is_jump = False
                 self.is_falling = False
-                self.jump_vel = uni_jump_vel
+                self.jump_vel = self.max_jump_vel
 
 
 
@@ -276,13 +300,13 @@ class enemy(object):
         while collision is False and count < len(platforms):
             if self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height + y > platforms[count].dimensions[2] and self.y + y < platforms[count].dimensions[3]:
                 collision = True
-                self.current_platform[0] = (platforms[count].dimensions[0], platforms[count].dimensions[2])
-                self.current_platform[1] = (platforms[count].dimensions[1], platforms[count].dimensions[2])
+                if self.y + self.height < platforms[count].dimensions[2]:
+                    self.current_platform[0] = (platforms[count].dimensions[0], platforms[count].dimensions[2])
+                    self.current_platform[1] = (platforms[count].dimensions[1], platforms[count].dimensions[2])
             elif self.x + x < 0 or self.x + self.width + x > worldx:
                 collision = True
             elif self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height > platforms[count].dimensions[2] - y and self.y + y < platforms[count].dimensions[3]:
                 collision = True
-                #print(platforms.platforms[count].label)
                 self.y = platforms[count].dimensions[2] + self.height
                 self.x += x
                 self.current_platform[0] = (platforms[count].dimensions[0], platforms[count].dimensions[2])
@@ -339,8 +363,9 @@ class red_guy(enemy):
         self.still = pygame.transform.scale(self.still, (48, 48))
         self.run_r = self.rs.load_strip((0, 0, 100, 100),  18, (0, 0, 0))
         self.idle = self.bs.load_strip((0, 0, 100, 100),  11, (0, 0, 0))
-        self.jump_img = self.js.load_strip((0, 0, 100, 100), 2, (0, 0, 0))
+        self.jump_r = self.js.load_strip((0, 0, 100, 100), 2, (0, 0, 0))
         self.run_l = []
+        self.jump_l = []
         # character variables
         self.walk_count = 0
         self.vel = 3
@@ -363,13 +388,13 @@ class red_guy(enemy):
         self.jump_point = 1900
         self.choose_ledge()
         self.current_platform = [(0,0), (0,0)]
-        self.find_ledges()
 
 
 
 
-        for i in range(0, len(self.jump_img)):
-            self.jump_img[i] = pygame.transform.scale(self.jump_img[i], (48,48))
+        for i in range(0, len(self.jump_r)):
+            self.jump_r[i] = pygame.transform.scale(self.jump_r[i], (48,48))
+            self.jump_l.append(pygame.transform.flip(self.jump_r[i], True, False))
         for i in range(0, len(self.idle)):
             self.idle[i] = pygame.transform.scale(self.idle[i], (48,48))
         for i in range(0, len(self.run_r)):
@@ -378,96 +403,104 @@ class red_guy(enemy):
             self.run_l.append(pygame.transform.flip(self.run_r[i], True, False))
 
 
+
     def find_max_height(self):
         max_height = 0
         max_width = 0
         while self.jump_vel > 0:
-            self.jump_vel -= uni_grav_acel
             max_height += self.jump_vel
             max_width += self.vel
+            self.jump_vel -= uni_grav_acel
 
         self.jump_vel = self.max_jump_vel
-        #print("max_height: {m}".format(m = max_height))
-        test_max = ((self.max_jump_vel ** 2) * (math.sin(90) ** 2)) / (2 * uni_grav_acel)
-        #print("test_max: {t}".format(t = test_max))
-        return round(max_height), round(max_width)
+        return round(max_height), round(max_width * 2)
 
 
     def ai(self):
-
         self.throw_count += 1
         if self.throw_count >= 100 and len(projectiles) < 5:
             self.throw_acorn()
             self.throw_count = 0
-        if self.x + self.width < self.chosen_ledge[0]:
-            self.move_right()
-            print("right>")
-            if self.is_jump == False and self.is_falling == False:
-                if self.x + self.width >= self.jump_point:
-                    self.jump()
-                    print("jump")
-        elif self.x > self.chosen_ledge[0]:
-            self.move_left()
-            print("left<")
-            if self.is_jump == False and self.is_falling == False:
-                if self.x <= self.jump_point:
-                    self.jump()
-                    print("jump")
-        else:
+        if self.is_jump is False and self.chosen_ledge != [0,0,'0']:
+            self.choose_ledge()
+
+        if self.chosen_ledge == [0,0,'0']:
             self.stand()
-            #print("stand")
-            self.choose_ledge()
-        if self.chosen_ledge[1] > self.y:
-            self.choose_ledge()
+        elif self.x + self.width <= self.chosen_ledge[0] and self.y + self.height > self.chosen_ledge[1]: #if npc is to the left of and below the chosen ledge
+            self.move_right()
+            #print("right>")
+            if self.is_jump is False:
+                if self.jump_point == self.current_platform[1][0]:
+                    if self.x >= self.jump_point - self.vel:
+                        self.jump()
+                elif self.x + self.width >= self.jump_point:  #if npc is not currently jumping and right edge of npc is past jump point
+                    self.jump()
+
+        elif self.x >= self.chosen_ledge[0] and self.y + self.height > self.chosen_ledge[1]: #if npc is to the right of and below the chosen ledge
+                self.move_left()
+                if self.is_jump is False:
+                    #print("x: {x} jump_point: {j}".format(x=self.x, j=self.jump_point))
+                    if self.jump_point == self.current_platform[0][0]:
+                        #print("here?")
+                        if self.x <= self.jump_point - self.vel:
+                            self.jump()
+                    elif self.x <= self.jump_point:
+                        #print("jump!")
+                        self.jump()
+
+
+
+
 
 
     def find_jump_point(self):
         height_diff = self.chosen_ledge[1] - (self.y + self.height)
         jump_width = 0
+        collide = False
         while height_diff < 0 and height_diff > -2000:
             height_diff += self.jump_vel - uni_grav_acel
             jump_width += self.vel
-        if self.chosen_ledge[2] == 'l':
-            if self.chosen_ledge[0] - jump_width > self.current_platform[0][0]:
+
+        if self.chosen_ledge[2] == 'l': #moving right
+            if self.chosen_ledge[0] - jump_width < self.current_platform[1][0]:
                 self.jump_point = self.chosen_ledge[0] - jump_width
             else:
-                self.jump_point = self.current_platform[0][0]
-        else:
+                self.jump_point = self.current_platform[1][0]
+        else: # moving left
             if self.chosen_ledge[0] + jump_width > self.current_platform[0][0]:
-                #print("here?")
                 self.jump_point = self.chosen_ledge[0] + jump_width
             else:
-                print("here?")
                 self.jump_point = self.current_platform[0][0]
-
 
 
 
     def find_ledges(self):
+        temp = []
         for i in level_platforms:
             if i.label != 'ground':
-                self.ledges.append([i.x, i.surface, 'l'])
-                self.ledges.append([i.x+i.width, i.surface, 'r'])
+                temp.append([i.x, i.surface, 'l', i.label, i.height])
+                temp.append([i.x+i.width, i.surface, 'r', i.label, i.height])
+                #print("x: {x}, surface: {s}".format(x=i.x+i.width, s=i.surface))
+        self.ledges = sorted(temp, key = lambda x:x[1])
 
 
     def choose_ledge(self):
-        print("choosing!")
-        for ledge in self.ledges:
-            height_diff = ledge[1] - (self.y + (self.height/2))
-            width_diff = ledge[0] - (self.x + (self.width/2))
-            if self.chosen_ledge == []:
-                self.chosen_ledge = ledge
-            elif height_diff < 0 and abs(height_diff) < self.jump_height - self.height: #and abs(height_diff) < abs(self.chosen_ledge[1] - (self.y + self.height/2)):
-                if self.x > ledge[0] and ledge[2] == 'r':
-                    print("r> {l}".format(l=ledge))
-                    self.chosen_ledge = ledge
-                elif self.x < ledge[0] and ledge[2] == 'l':
-                    print("l< {l}".format(l=ledge))
-                    self.chosen_ledge = ledge
-
-        #print("current_ledge: {l}".format(l=self.chosen_ledge))
-        self.find_jump_point()
-        #print("Jump_point: {j}".format(j=self.jump_point))
+        #print("choosing")
+        self.chosen_ledge = [0,0,'0']
+        for i in range(len(self.ledges)-1, -1, -1):
+            if self.ledges[i][1] <= self.y + self.height and self.chosen_ledge[1] < self.ledges[i][1]:  #if ledge above npc's head and lower than current ledge
+                if self.x <= self.ledges[i][0] and self.ledges[i][2] == 'l':
+                    if self.current_platform[1][0] + self.jump_width >= self.ledges[i][0]:
+                        self.chosen_ledge = self.ledges[i]
+                        self.find_jump_point()
+                        #print("new! {l}".format(l=self.chosen_ledge))
+                elif self.x >= self.ledges[i][0] and self.ledges[i][2] == 'r':
+                    if self.current_platform[0][0] - self.jump_width <= self.ledges[i][0]:
+                        self.chosen_ledge = self.ledges[i]
+                        self.find_jump_point()
+                        #print("new! {l}".format(l=self.chosen_ledge))
+                else:
+                    self.chosen_ledge = [0,0,'0']
 
 
 
@@ -528,10 +561,10 @@ class blue_guy(enemy):
         else:
             self.stand()
         self.throw_count += 1
-        print(self.throw_count)
+        #print(self.throw_count)
         if self.throw_count >= 100 and len(projectiles) < 5:
             self.throw_acorn()
-            print("throw!")
+            #print("throw!")
             self.throw_count = 0
         if self.y <= player.y and pygame.time.get_ticks() % 100 == 0:
             self.jump()
@@ -621,7 +654,7 @@ class projectile(object):
     def hit(self):
         if self.x + self.width > player.x and self.x < player.x + player.width  and self.y + self.height > player.y and self.y < player.y + player.height:
             player.hit(self)
-            print("hit!")
+            #print("hit!")
 
 
 class acorn(projectile):
@@ -656,17 +689,18 @@ def draw_world(world):
         if proj.x > worldx or proj.y > worldy or proj.x < 0 or proj.y < 0:
             projectiles.remove(proj)
 
-    #pygame.draw.circle(world, black, (player.chosen_ledge[0], player.chosen_ledge[1]), 4)
-    pygame.draw.circle(world, red, (enemies[0].chosen_ledge[0], enemies[0].chosen_ledge[1]), 4)
-    pygame.draw.circle(world, blue, enemies[0].current_platform[0], 4)
-    pygame.draw.circle(world, blue, enemies[0].current_platform[1], 4)
-    #print("jp: {j}".format(j=enemies[0].jump_point))
-    pygame.draw.circle(world, black, (enemies[0].jump_point, enemies[0].chosen_ledge[1]), 4)
-    #pygame.draw.circle(world, blue, player.current_platform[1], 4)
+    for enemy in enemies:
+        pygame.draw.circle(world, red, (enemy.chosen_ledge[0], enemy.chosen_ledge[1]), 4)
+        pygame.draw.circle(world, blue, enemy.current_platform[0], 4)
+        pygame.draw.circle(world, blue, enemy.current_platform[1], 4)
+        pygame.draw.circle(world, black, (enemy.jump_point, enemy.chosen_ledge[1]), 4)
+
 
 
     if grid_on == True:
-            draw_grid(world)
+        draw_grid(world)
+    if pnums == True:
+        draw_pnums(world)
 
 
 def load_level(level):
@@ -701,12 +735,27 @@ def draw_grid(world):
         pygame.draw.line(world, black, (0, y), (worldx, y))
 
 
+
+
 def display_grid(grid_on):
     if grid_on == False:
         grid_on = True
     else:
         grid_on = False
     return grid_on
+
+def display_pnums(pnums):
+    if pnums == False:
+        pnums = True
+    else:
+        pnums = False
+    return pnums
+
+def draw_pnums(world):
+    pfont = pygame.font.SysFont('0', 40)
+    for plat in platforms:
+        plabel = pfont.render(str(plat.label), 2, black)
+        world.blit(plabel, (plat.x + (plat.width //2), (plat.y + (plat.height//2))))
 
 """
 SETUP
@@ -727,6 +776,7 @@ ground = (os.path.join('images', 'full_ground1920x64.png'))
 sml_platform = (os.path.join('images', '1TilePlatform64x64.png'))
 mdm_platform = (os.path.join('images', '2TilePlatform128x64.png'))
 grid_on = False
+pnums = False
 
 
 # key presses
@@ -739,6 +789,7 @@ uni_run_vel = 5
 red = (227, 41, 44)
 black = (0, 0, 0)
 blue = (41, 156, 227)
+white = (254, 254, 254)
 
 
 """
@@ -751,23 +802,23 @@ level_enemies = []
 level_player = []
 
 
-level_platforms.append(p_forms.platform(0, worldy-64, 1920, 64, ground, "ground"))
-level_platforms.append(p_forms.platform(0, 348, 128, 64, mdm_platform, "platform one"))
-level_platforms.append(p_forms.platform(160, 288, 64, 64, sml_platform, "platform two"))
-level_platforms.append(p_forms.platform(320, 160, 64, 64, sml_platform, "platform three"))
-level_platforms.append(p_forms.platform(446, 96, 64, 64, sml_platform, "platform four"))
-level_platforms.append(p_forms.platform(1664, 832, 128, 64, mdm_platform, "platform five"))
-level_platforms.append(p_forms.platform(1408, 704, 128, 64, mdm_platform, 'platform six'))
-level_platforms.append(p_forms.platform(1152, 512, 128, 64, mdm_platform, 'platform seven'))
-level_platforms.append(p_forms.platform(896, 384, 128, 64, mdm_platform, 'platform eight'))
-level_platforms.append(p_forms.platform(worldx-64, 960, 64, 64, sml_platform, 'platform nine'))
-level_platforms.append(p_forms.platform(1280, 640, 64, 64, sml_platform, 'platform ten'))
-level_platforms.append(p_forms.platform(1088, 512, 64, 64, sml_platform, 'platform ten'))
-level_platforms.append(p_forms.platform(1536, 768, 64, 64, sml_platform, 'platform ten'))
-level_platforms.append(p_forms.platform(640, 640, 128, 64, mdm_platform, 'platform eight'))
-level_platforms.append(p_forms.platform(448, 448, 64, 64, sml_platform, "platform two"))
-level_platforms.append(p_forms.platform(576, 576, 64, 64, sml_platform, "platform two"))
-level_platforms.append(p_forms.platform(320, 320, 64, 64, sml_platform, "platform two"))
+level_platforms.append(Platform(0, worldy-64, 1920, 64, ground, "ground"))
+level_platforms.append(Platform(0, 348, 128, 64, mdm_platform, 1))
+level_platforms.append(Platform(160, 288, 64, 64, sml_platform, 2))
+level_platforms.append(Platform(320, 160, 64, 64, sml_platform, 3))
+level_platforms.append(Platform(446, 96, 64, 64, sml_platform, 4))
+level_platforms.append(Platform(1664, 832, 128, 64, mdm_platform, 5))
+level_platforms.append(Platform(1408, 704, 128, 64, mdm_platform, 6))
+level_platforms.append(Platform(1152, 512, 128, 64, mdm_platform, 7))
+level_platforms.append(Platform(896, 384, 128, 64, mdm_platform, 8))
+level_platforms.append(Platform(worldx-64, 960, 64, 64, sml_platform, 9))
+level_platforms.append(Platform(1280, 640, 64, 64, sml_platform, 10))
+level_platforms.append(Platform(1040, 500, 64, 64, sml_platform, 11))
+level_platforms.append(Platform(1536, 768, 64, 64, sml_platform, 12))
+level_platforms.append(Platform(640, 640, 128, 64, mdm_platform, 13))
+level_platforms.append(Platform(448, 448, 64, 64, sml_platform, 14))
+level_platforms.append(Platform(576, 576, 64, 64, sml_platform, 15))
+level_platforms.append(Platform(320, 320, 64, 64, sml_platform, 16))
 
 
 for i in level_platforms:
@@ -803,7 +854,8 @@ for i in range(0, 15):
     level_coins.append(Coin(coin_x, worldy-100))
     coin_x += 40
 
-level_enemies.append(red_guy(1400, 900))
+level_enemies.append(red_guy(1400, 980))
+level_enemies.append(red_guy(660, 600))
 #level_enemies.append(blue_guy(200, 400))
 
 level_player = [worldx - 100, worldy-200]
@@ -855,6 +907,8 @@ while main is True:
                 sys.exit()
             if event.key == pygame.K_g:
                 grid_on = display_grid(grid_on)
+            if event.key == pygame.K_p:
+                pnums = display_pnums(pnums)
             if event.key == pygame.K_SPACE:
                 player.jump()
             if event.key == pygame.K_RIGHT:
