@@ -9,6 +9,63 @@ import spritesheet
 platforms.platformS
 """
 
+
+class Menu(object):
+    def __init__(self):
+        object.__init__(self)
+        self.x = worldx
+        self.y = 5
+        self.font_size = 42
+        self.max_font_size = 104
+        self.font = pygame.font.Font('ARCADECLASSIC.TTF', self.font_size)
+        self.cs = spritesheet.spritesheet(os.path.join('images/object', 'coin100.png'))
+        self.coin_ani_count = 0
+        self.coin_rotation_rate = .2
+        self.coin_ani = self.cs.load_strip((0, 0, 100, 100), 16, (0, 0, 0))
+        self.score_spacer = 5
+        self.score_width = 0
+        self.transition_speed = 10
+        self.transition_count = 0
+        self.score_width = 0
+        self.transition_diff = round((self.x + (self.score_width / 2) / (worldx / 2)))
+        self.game_win = False
+        for i in range(0, len(self.coin_ani)):
+            size = self.font_size
+            self.coin_ani[i] = pygame.transform.scale(self.coin_ani[i], (size, size))
+
+
+    def game_over(self, world):
+        #print("font_size: {f}".format(f=self.font_size))
+        self.font = pygame.font.Font('ARCADECLASSIC.TTF', self.font_size)
+        coin_score = self.font.render(str(player.coin_count), 2, white)
+        self.score_width = coin_score.get_width()
+        if self.game_win == True:
+            if self.x + self.score_width >= worldx // 2:
+                for i in range(0, len(self.coin_ani)):
+                    print("font_size: {f}".format(f=self.font_size))
+                    self.coin_ani[i] = pygame.transform.scale(self.coin_ani[i], (self.font_size, self.font_size))
+                    print("font_size: {f}".format(f=self.font_size))
+                #print(self.x + self.score_width)
+                world.blit(coin_score, (self.x - self.score_spacer - self.score_width, round(self.y)))
+                world.blit(self.coin_ani[round(self.coin_ani_count)], (self.x - self.score_spacer - self.score_width - self.score_spacer - self.font_size, round(self.y)))
+                self.coin_ani_count += self.coin_rotation_rate
+                if self.coin_ani_count >= len(self.coin_ani) - 1:
+                    self.coin_ani_count = 0
+                self.x -= self.transition_speed
+                if self.y < worldy // 2:
+                    self.y += abs(((self.y - (worldy / 2)) // self.transition_diff)) * 3
+                if self.font_size < self.max_font_size:
+                    self.font_size += 1
+
+
+                self.score_spacer += round((self.max_font_size - self.font_size) // self.transition_diff)
+            else:
+                world.blit(coin_score, (self.x - self.score_spacer - self.score_width, self.y))
+                world.blit(self.coin_ani[round(self.coin_ani_count)], (self.x - self.score_spacer - self.score_width - self.score_spacer - self.font_size, self.y))
+                self.coin_ani_count += self.coin_rotation_rate
+                if self.coin_ani_count >= len(self.coin_ani) -1:
+                    self.coin_ani_count = 0
+
 class HUD(object):
     def __init__(self):
         self.font = pygame.font.Font('ARCADECLASSIC.TTF', 42)
@@ -19,19 +76,19 @@ class HUD(object):
         self.coin_rotation_rate = .2
         self.coin_ani = self.cs.load_strip((0, 0, 100, 100), 16, (0, 0, 0))
         self.coin_width = 40
+        self.spacer = 5
         for i in range(0, len(self.coin_ani)):
             self.coin_ani[i] = pygame.transform.scale(self.coin_ani[i], (40,40))
 
     def draw(self, world):
         coin_score = self.font.render(str(player.coin_count), 2, white)
         score_width = coin_score.get_width()
-        world.blit(coin_score, (worldx - 5 - score_width, 5))
-        world.blit(self.coin_ani[round(self.coin_ani_count)], (worldx - 5 - score_width - 5 - self.coin_width, 5))
+        world.blit(coin_score, (worldx - self.spacer - score_width, self.spacer))
+        world.blit(self.coin_ani[round(self.coin_ani_count)], (worldx - self.spacer - score_width - self.spacer - self.coin_width, self.spacer))
         self.coin_ani_count += self.coin_rotation_rate
         if self.coin_ani_count >= len(self.coin_ani) -1:
             self.coin_ani_count = 0
         self.health_bar[0] = pygame.transform.scale(self.health_bar[0], (int((player.hp / player.max_hp)* 100), 100))
-        print(int((player.hp / player.max_hp) * 100))
         world.blit(self.health_bar[1], (worldx - 105, 10))
         world.blit(self.health_bar[0], (worldx - 105, 10))
 
@@ -142,6 +199,13 @@ class Player(object):
                 self.coin_count += 1
                 coins.pop(coins.index(coin))
 
+        # Chest Collision
+        for chest in chests:
+            if self.x + self.width > chest.x and self.x < chest.x + chest.width and self.y + self.width > chest.y and self.y < chest.y + chest.width:
+                chest.triggered = True
+
+
+
 
 
     def collision(self, x, y):
@@ -192,7 +256,9 @@ class Player(object):
         self.hp -= projectile.damage
         projectiles.remove(projectile)
         print("hp: {h}".format(h=self.hp))
-        
+        if self.hp <= 1:
+            self.hp = self.max_hp
+
 class Platform(object):
     def __init__(self, x, y, width, height, filename, label):
         self.x = x
@@ -587,30 +653,30 @@ class blue_guy(enemy):
         dy = ty * z
         projectiles.append(acorn(self.x, self.y, dx, dy))
 
-class Coin(object):
+class Ani_Item(object):
     def __init__(self, x, y):
         object.__init__(self)
         self.x = x
         self.y = y
-        self.cs = spritesheet.spritesheet(os.path.join('images/object', 'coin100.png'))
-        self.coin_ani = self.cs.load_strip((0, 0, 100, 100), 16, (0, 0, 0))
-        self.coin_ani_count = 0
-        self.coin_rotation_rate = .3
-        self.width = 40
-        self.height = 40
+        self.ss = []
+        self.img_ani = []
+        self.ani_count = 0
+        self.rotation_rate = 0
+        self.width = 0
+        self.height = 0
         self.settled = False
-        self.coin_coordinates = [self.x, self.y, self.x + self.width, self.y + self.height]
+        self.hit_box = [self.x, self.y, self.x + self.width, self.y + self.height]
 
-        for i in range(0, len(self.coin_ani)):
-            self.coin_ani[i] = pygame.transform.scale(self.coin_ani[i], (40,40))
+        for i in range(0, len(self.img_ani)):
+            self.img_ani[i] = pygame.transform.scale(self.img_ani[i], (40,40))
 
     def draw(self, world):
         if self.settled is False:
             self.gravity()
-        world.blit(self.coin_ani[round(self.coin_ani_count)], (self.x, self.y))
-        self.coin_ani_count += self.coin_rotation_rate
-        if self.coin_ani_count >= len(self.coin_ani) -1:
-            self.coin_ani_count = 0
+        world.blit(self.img_ani[round(self.ani_count)], (self.x, self.y))
+        self.ani_count += self.rotation_rate
+        if self.ani_count >= len(self.img_ani) -1:
+            self.ani_count = 0
 
     def collision(self, y):
         collision = False
@@ -626,6 +692,56 @@ class Coin(object):
     def gravity(self):
         if self.collision(uni_grav_acel) is True:
             self.settled = True
+
+class Coin(Ani_Item):
+    def __init__(self, x, y):
+        object.__init__(self)
+        self.x = x
+        self.y = y
+        self.ss = spritesheet.spritesheet(os.path.join('images/object', 'coin100.png'))
+        self.img_ani = self.ss.load_strip((0, 0, 100, 100), 16, (0, 0, 0))
+        self.ani_count = 0
+        self.rotation_rate = .3
+        self.width = 40
+        self.height = 40
+        self.settled = False
+        #self.coordinates = [self.x, self.y, self.x + self.width, self.y + self.height]
+
+        for i in range(0, len(self.img_ani)):
+            self.img_ani[i] = pygame.transform.scale(self.img_ani[i], (self.width, self.height))
+
+class Chest(Ani_Item):
+    def __init__(self, x, y):
+        object.__init__(self)
+        self.x = x
+        self.y = y
+        self.ss = spritesheet.spritesheet(os.path.join('images/object', 'chest100.png'))
+        self.img_ani = self.ss.load_strip((0, 0, 100, 100), 6, (0, 0, 0))
+        self.ani_count = 0
+        self.width = 60
+        self.height = 60
+        self.coin_value = 50
+        self.settled = False
+        self.triggered = False
+
+        for i in range(0, len(self.img_ani)):
+            self.img_ani[i] = pygame.transform.scale(self.img_ani[i], (self.width, self.height))
+        #self.coordinates = [self.x, self.y, self.x + self.width, self.y + self.height]
+
+    def draw(self, world):
+        if self.settled is False:
+            self.gravity()
+        if self.triggered:
+            if self.ani_count < len(self.img_ani) - 1:
+                world.blit(self.img_ani[round(self.ani_count)], (self.x, self.y))
+                self.ani_count += .25
+            else:
+                delete_chest(self)
+                if chests == []:
+                    menu.game_win = True
+        else:
+            world.blit(self.img_ani[0], (self.x, self.y))
+
 
 class projectile(object):
     def __init__(self, x, y, dx, dy):
@@ -666,7 +782,7 @@ class acorn(projectile):
         self.dy = dy
         self.ass = spritesheet.spritesheet(os.path.join('images/object', 'sm_acorn.png'))
         self.img = self.ass.image_at((0, 0, 24, 19), (0, 0, 0))
-        self.vel = 10
+        self.vel = 15
         self.img_count = 0
         self.damage = 1
         self.width = self.img.get_width()
@@ -676,31 +792,47 @@ class acorn(projectile):
 
 def draw_world(world):
     world.blit(backdrop, backdropbox)
-    hud.draw(world)
-    for plat in platforms:
-        plat.draw(world)
-    player.draw(world)
-    for enemy in enemies:
-        enemy.draw(world)
-    for coin in coins:
-        coin.draw(world)
-    for proj in projectiles:
-        proj.draw(world)
-        if proj.x > worldx or proj.y > worldy or proj.x < 0 or proj.y < 0:
-            projectiles.remove(proj)
+    #print(menu.game_win)
+    if menu.game_win == False:
+        hud.draw(world)
+        for plat in platforms:
+            plat.draw(world)
+        player.draw(world)
+        for enemy in enemies:
+            enemy.draw(world)
+        for coin in coins:
+            coin.draw(world)
+        for proj in projectiles:
+            proj.draw(world)
+            if proj.x > worldx or proj.y > worldy or proj.x < 0 or proj.y < 0:
+                projectiles.remove(proj)
 
-    for enemy in enemies:
-        pygame.draw.circle(world, red, (enemy.chosen_ledge[0], enemy.chosen_ledge[1]), 4)
-        pygame.draw.circle(world, blue, enemy.current_platform[0], 4)
-        pygame.draw.circle(world, blue, enemy.current_platform[1], 4)
-        pygame.draw.circle(world, black, (enemy.jump_point, enemy.chosen_ledge[1]), 4)
+        for enemy in enemies:
+            pygame.draw.circle(world, red, (enemy.chosen_ledge[0], enemy.chosen_ledge[1]), 4)
+            pygame.draw.circle(world, blue, enemy.current_platform[0], 4)
+            pygame.draw.circle(world, blue, enemy.current_platform[1], 4)
+            pygame.draw.circle(world, black, (enemy.jump_point, enemy.chosen_ledge[1]), 4)
+
+        if grid_on == True:
+            draw_grid(world)
+        if pnums == True:
+            draw_pnums(world)
+
+    else:
+        menu.game_over(world)
+
+    for chest in chests:
+        chest.draw(world)
 
 
+def delete_chest(trip_chest):
+    try:
+        player.coin_count += trip_chest.coin_value
+        chests.remove(trip_chest)
+        print(chests)
 
-    if grid_on == True:
-        draw_grid(world)
-    if pnums == True:
-        draw_pnums(world)
+    except:
+        print("Chest not found!")
 
 
 def load_level(level):
@@ -709,7 +841,7 @@ def load_level(level):
     for coin in level[1]:
         coins.append(coin)
     for chest in level[2]:
-        chest.append(chest)
+        chests.append(chest)
     for enemy in level[3]:
         enemies.append(enemy)
     player.x = level[4][0]
@@ -733,8 +865,6 @@ def draw_grid(world):
         world.blit(ylabel, (1960, y))
 
         pygame.draw.line(world, black, (0, y), (worldx, y))
-
-
 
 
 def display_grid(grid_on):
@@ -770,6 +900,7 @@ clock = pygame.time.Clock()
 pygame.init()
 world = pygame.display.set_mode([worldx, worldy], pygame.FULLSCREEN)
 hud = HUD()
+menu = Menu()
 backdrop = pygame.image.load(os.path.join('images', 'Background1920x1080.png')).convert()
 backdropbox = world.get_rect()
 ground = (os.path.join('images', 'full_ground1920x64.png'))
@@ -777,6 +908,7 @@ sml_platform = (os.path.join('images', '1TilePlatform64x64.png'))
 mdm_platform = (os.path.join('images', '2TilePlatform128x64.png'))
 grid_on = False
 pnums = False
+game_win = False
 
 
 # key presses
@@ -797,7 +929,7 @@ LEVEL CREATION
 """
 level_platforms = []
 level_coins = []
-level_chest = []
+level_chests = []
 level_enemies = []
 level_player = []
 
@@ -828,26 +960,6 @@ for i in level_platforms:
         level_coins.append(Coin(cx, cy))
     if i.width == 128:
         level_coins.append(Coin(cx+64, cy))
-"""
-level_coins.append(Coin(32, 320))
-level_coins.append(Coin(96, 320))
-level_coins.append(Coin(192, 256))
-level_coins.append(Coin(352, 288))
-level_coins.append(Coin(480, 416))
-level_coins.append(Coin(576, 544))
-level_coins.append(Coin(640, 608))
-level_coins.append(Coin(704, 608))
-level_coins.append(Coin(445, 0))
-level_coins.append(Coin(200, 240))
-level_coins.append(Coin(325, 110))
-level_coins.append(Coin(445, 0))
-level_coins.append(Coin(200, 240))
-level_coins.append(Coin(325, 110))
-level_coins.append(Coin(445, 0))
-level_coins.append(Coin(200, 240))
-level_coins.append(Coin(325, 110))
-level_coins.append(Coin(445, 0))
-"""
 
 coin_x = 100
 for i in range(0, 15):
@@ -860,7 +972,9 @@ level_enemies.append(red_guy(660, 600))
 
 level_player = [worldx - 100, worldy-200]
 
-demo_level = [level_platforms, level_coins, level_chest, level_enemies, level_player]
+level_chests.append(Chest(1700, 900))
+
+demo_level = [level_platforms, level_coins, level_chests, level_enemies, level_player]
 
 
 
@@ -876,10 +990,11 @@ demo_level = [level_platforms, level_coins, level_chest, level_enemies, level_pl
 # create world platforms.platforms
 platforms = []
 coins = []
-chest = []
+chests = []
 enemies = []
 projectiles = []
 player = Player(0,0)
+
 
 
 
