@@ -210,7 +210,7 @@ class Player(object):
         self.vel = 5
         self.coin_count = 0
         self.current_platform = [(0,0), (0,0)]
-        self.melee_length = 20
+        self.melee_length = 100
         self.melee_damage = 200
         self.melee_direction = 0
         self.hit_box = [0, 0, 0, 0]
@@ -220,11 +220,11 @@ class Player(object):
     def draw(self, world):
         self.move()
         self.hit_box = [self.x, self.y, self.width, self.height]
-        if self.melee_direction > 0:
+        if self.last_direction > 0:
             self.attack_box = [self.x, self.y, self.width + self.melee_length, self.height]
         else:
-            self.attack_box = [self.x - self.melee_length, self.y, self.width, self.height]
-        #pygame.draw.rect(world, blue, self.attack_box, 1)
+            self.attack_box = [self.x - self.melee_length, self.y, self.width + self.melee_length, self.height]
+        pygame.draw.rect(world, blue, self.attack_box, 1)
         #pygame.draw.rect(world, red, self.hit_box, 1)
         if self.walk_count >= (self.ani_speed * len(self.run_r)) - 1:
             self.walk_count = 0
@@ -312,13 +312,13 @@ class Player(object):
     def move_right(self):
         if self.direction != 1:
             self.direction = 1
-            self.melee_direction = 1
-            self.walk_count = 0
+            self.last_direction = 1
+        self.walk_count = 0
 
     def move_left(self):
         if self.direction != -1:
             self.direction = -1
-            self.melee_direction = -1
+            self.last_direction = -1
             self.walk_count = 0
 
     def stand(self):
@@ -328,19 +328,19 @@ class Player(object):
     def melee(self):
         print("attack!")
         for enemy in enemies:
-            if enemy.x > self.attack_box[0] and enemy.x < self.attack_box[0] + self.attack_box[2]:
-                if enemy.y + enemy.height > self.attack_box[2] or enemy.y < self.attack_box[3]:
-                    enemy.hit(self.melee_damage, self.direction)
-            if enemy.x + enemy.width > self.attack_box[0] and enemy.x < self.attack_box[0] + self.attack_box[2]:
-                if enemy.y + enemy.height > self.attack_box[2] or enemy.y < self.attack_box[3]:
-                    enemy.hit(self.melee_damage, self.direction)
+            if self.attack_box[0] < enemy.x < self.attack_box[0] + self.attack_box[2] or self.attack_box[0] < enemy.x + enemy.height < self.attack_box[0] + self.attack_box[2] :
+                print(enemy.x)
+                if self.attack_box[1] < enemy.y + enemy.height < self.attack_box[1] + self.attack_box[3]:
+                    enemy.hit(self.melee_damage)
+                elif self.attack_box[1] < enemy.y < self.attack_box[1] + self.attack_box[3]:
+                    enemy.hit(self.melee_damage)
 
 
 
     def hit(self, projectile):
         self.hp -= projectile.damage
         projectiles.remove(projectile)
-        print("hp: {h}".format(h=self.hp))
+        #print("hp: {h}".format(h=self.hp))
         if self.hp <= 1:
             self.hp = self.max_hp
 
@@ -492,9 +492,10 @@ class enemy(object):
     def stand(self):
         self.direction = 0
 
-    def hit(self, damage, direction):
+    def hit(self, damage):
+        print("I'm scared!")
         self.run_away_vel = damage
-        self.direction = direction
+        self.direction *= -1
         self.scared = True
         self.is_jump = False
 
@@ -612,9 +613,10 @@ class red_guy(enemy):
                             self.jump()
 
 
-    def hit(self, damage, direction):
+    def hit(self, damage):
+        print("I'm scared!")
         self.run_away_vel = damage
-        self.run_away_direction = direction
+        self.direction *= -1
         self.scared = True
 
 
