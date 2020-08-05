@@ -23,6 +23,14 @@ class Menu(object):
         self.coin_rotation_rate = .2
         self.coin_ani = self.cs.load_strip((0, 0, 100, 100), 16, (0, 0, 0))
         self.coin_ani_scale = self.coin_ani[0]
+        self.player_ani_count = 0
+        self.temp_ani = 0
+        self.player_position_x = 0
+        self.player_position_y = 0
+        self.dx = 0
+        self.dy = 0
+        self.player_height = player.height
+        self.max_player_height = 220
         self.menu_font_size = 120
         self.menu_font = pygame.font.Font(game_font, self.menu_font_size)
         self.score_spacer = 5
@@ -40,15 +48,28 @@ class Menu(object):
 
     def game_over(self, world):
         self.score_font = pygame.font.Font(game_font, self.font_size)
-
         coin_score = self.score_font.render(str(player.coin_count), 2, white)
         coin_score_o = self.score_font.render(str(player.coin_count), 2, black)
         self.score_width = coin_score.get_width()
+        """
+        if self.player_position_x == 0:
+            self.player_position_x = player.x
+            self.player_position_y = player.y
+            tx = (worldx // 2) - self.max_player_height - self.player_position_x
+            ty = 160 - self.player_position_y
+            z = 100 / (abs(tx) + abs(ty))
+            self.dx = tx * z
+            self.dy = ty * z
+            if player.direction == 1:
+                self.dance_ani = player.dance_l
+            else:
+                self.dance_ani = player.dance_r
+        """
 
         if self.game_win == True:
             if self.x - (self.score_width // 2) > worldx // 2:
+                # Moving score to middle the screen
                 self.coin_ani_scale = pygame.transform.scale(self.coin_ani[round(self.coin_ani_count)], (self.font_size, self.font_size))
-                #print(self.x + self.score_width)
                 world.blit(coin_score_o, (self.x - self.score_spacer - self.score_width + 2, round(self.score_y) + 2))
                 world.blit(coin_score, (self.x - self.score_spacer - self.score_width, round(self.score_y)))
                 world.blit(self.coin_ani_scale, (self.x - self.score_spacer - self.score_width - self.score_spacer - self.font_size - 1, round(self.score_y) - 1))
@@ -57,12 +78,29 @@ class Menu(object):
                     self.coin_ani_count = 0
                 self.x -= self.transition_speed
                 if self.score_y < worldy // 2:
-                    self.score_y += abs(((self.score_y - (worldy / 2)) // self.transition_diff)) * 3
+                    self.score_y += abs(((self.score_y - (worldy / 2)) // self.transition_diff)) * 6
                 if self.font_size < self.max_font_size:
                     self.font_size += 1
-
-
                 self.score_spacer += round((self.max_font_size - self.font_size) // self.transition_diff)
+                """
+                # Moving player, while dancing to middle of the screen
+                    # Scale animation up
+                    if self.player_ani_count >= len(player.dance_r) - 1:
+                        self.player_ani_count = 0
+                    self.temp_ani = pygame.transform.scale(self.dance_ani[self.player_ani_count], (self.player_height, self.player_height))
+                    world.blit(self.temp_ani, (self.player_position_x, self.player_position_y))
+                    # Move animation to center of screen
+                    increment = self.transition_speed / (abs(self.dx) + abs(self.dy))
+                    if self.player_position_x <= worldx // 2 - 10 or self.player_position_x >= worldx // 2 + 10:
+                        self.player_position_x += round(self.dx * increment)
+                    if self.player_position_y <= 150 or self.player_position_y >= 170:
+                        self.player_position_y += round(self.dy * increment)
+                    print("{x}, {y}".format(x = self.player_position_x, y = self.player_position_y))
+                    # Scaling up size of animation
+                    self.player_ani_count += 1
+                    if self.player_height < self.max_player_height:
+                        self.player_height += 5
+                """
             else:
                 if self.coin_ani[0].get_width != self.font_size:
                     for i in range(0, len(self.coin_ani)):
@@ -98,8 +136,7 @@ class Menu(object):
 class HUD(object):
     def __init__(self):
         self.font = pygame.font.Font(game_font, 42)
-        self.hs = spritesheet.spritesheet(os.path.join('images/object', 'health_bar.png')
-                                          )
+        self.hs = spritesheet.spritesheet(os.path.join('images/object', 'health_bar.png'))
         self.health_bar = self.hs.load_strip((0, 0, 100, 100), 2, (0, 0, 0))
         self.cs = spritesheet.spritesheet(os.path.join('images/object', 'coin100.png'))
         self.coin_ani_count = 0
@@ -121,9 +158,9 @@ class HUD(object):
         self.coin_ani_count += self.coin_rotation_rate
         if self.coin_ani_count >= len(self.coin_ani) -1:
             self.coin_ani_count = 0
-        self.health_bar[0] = pygame.transform.scale(self.health_bar[0], (int((player.hp / player.max_hp)* 100), 100))
-        world.blit(self.health_bar[1], (worldx - 105, 10))
+        self.health_bar[1] = pygame.transform.scale(self.health_bar[1], (int((player.hp / player.max_hp) * 100), 100))
         world.blit(self.health_bar[0], (worldx - 105, 10))
+        world.blit(self.health_bar[1], (worldx - 105, 10))
 
 
 
@@ -131,18 +168,41 @@ class HUD(object):
 class Player(object):
     def __init__(self, x, y):
         object.__init__(self)
-        self.run_r = [pygame.image.load(os.path.join('images/char', 'R%s.png') % frame) for frame in range(1, 10)]
-        self.run_l = [pygame.image.load(os.path.join('images/char', 'L%s.png') % frame) for frame in range(1, 10)]
-        self.standing = pygame.image.load(os.path.join('images/char', 'standing.png'))
+        # load character sprite sheets
+        self.rs = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_run_r.png'))
+        self.ss = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_idle_r.png'))
+        self.js = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_jump_r.png'))
+        self.ds = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_dance_r.png'))
+        self.ks = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_ko_r.png'))
+        self.rls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_run_l.png'))
+        self.sls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_idle_l.png'))
+        self.jls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_jump_l.png'))
+        self.dls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_dance_l.png'))
+        self.kls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_ko_l.png'))
+        # create animation lists
+        self.run_r = self.rs.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
+        self.idle_r = self.ss.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
+        self.jump_r = self.js.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
+        self.dance_r = self.ds.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
+        self.ko_r = self.ks.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
+        self.run_l = self.rls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
+        self.idle_l = self.sls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
+        self.jump_l = self.jls.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
+        self.dance_l = self.dls.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
+        self.ko_l = self.kls.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
+
+        # character variables
         self.x = x
         self.y = y
         self.max_hp = 10
         self.hp = self.max_hp
+        self.ani_speed = 2
         self.walk_count = 0
         self.direction = 0
+        self.last_direction = 1
         self.is_jump = False
-        self.height = 48
-        self.width = 33
+        self.height = 70
+        self.width = 40
         self.gravity = uni_grav_acel
         self.max_jump_vel = 20
         self.jump_vel = self.max_jump_vel
@@ -156,6 +216,7 @@ class Player(object):
         self.hit_box = [0, 0, 0, 0]
         self.attack_box = [0, 0, 0, 0]
 
+
     def draw(self, world):
         self.move()
         self.hit_box = [self.x, self.y, self.width, self.height]
@@ -163,18 +224,24 @@ class Player(object):
             self.attack_box = [self.x, self.y, self.width + self.melee_length, self.height]
         else:
             self.attack_box = [self.x - self.melee_length, self.y, self.width, self.height]
-        pygame.draw.rect(world, blue, self.attack_box, 1)
+        #pygame.draw.rect(world, blue, self.attack_box, 1)
         #pygame.draw.rect(world, red, self.hit_box, 1)
-        if self.walk_count > 25:
+        if self.walk_count >= (self.ani_speed * len(self.run_r)) - 1:
             self.walk_count = 0
-        if self.direction == 0:
-            world.blit(self.standing, (int(self.x), int(self.y)))
+        if self.direction == 0 and self.last_direction == 1:
+            world.blit(self.idle_r[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
+        elif self.direction == 0 and self.last_direction == -1:
+            world.blit(self.idle_l[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
+        elif self.is_jump:
+            if self.direction == 1:
+                world.blit(self.jump_r[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
+            else:
+                world.blit(self.jump_l[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
         elif self.direction == 1:
-            self.walk_count += 1
-            world.blit(self.run_r[self.walk_count // 3], (self.x, self.y))
+            world.blit(self.run_r[self.walk_count // self.ani_speed], (self.x, self.y))
         elif self.direction == -1:
-            self.walk_count += 1
-            world.blit(self.run_l[self.walk_count // 3], (self.x, self.y))
+            world.blit(self.run_l[self.walk_count // self.ani_speed], (self.x, self.y))
+        self.walk_count += 1
 
 
     def move(self):
@@ -216,9 +283,6 @@ class Player(object):
                 chest.triggered = True
 
 
-
-
-
     def collision(self, x, y):
         collision = False
         count = 0
@@ -241,7 +305,7 @@ class Player(object):
         return collision
 
     def jump(self):
-        if self.is_jump == False:
+        if self.is_jump is False and self.is_falling is False:
             self.is_jump = True
             self.walk_count = 0
 
@@ -258,6 +322,7 @@ class Player(object):
             self.walk_count = 0
 
     def stand(self):
+        self.last_direction = self.direction
         self.direction = 0
 
     def melee(self):
@@ -408,7 +473,7 @@ class enemy(object):
         return collision
 
     def jump(self):
-        if self.is_jump == False:
+        if self.is_jump is False and self.is_falling is False:
             self.is_jump = True
             self.walk_count = 0
 
@@ -507,7 +572,6 @@ class red_guy(enemy):
         self.throw_count += 1
         if self.scared and self.run_away_vel > 0:
             if self.run_away_vel > 0:
-                print(self.direction)
                 if self.direction == -1:
                     self.move_left()
                 else:
@@ -669,19 +733,9 @@ class blue_guy(enemy):
         if self.y <= player.y and pygame.time.get_ticks() % 100 == 0:
             self.jump()
 
-
-
-
     def throw_acorn(self):
-        if player.direction == 0:
-            tx = player.x - self.x
-            ty = player.y - self.y
-        elif player.direction == 1:
-            tx = (player.x - self.x)
-            ty = player.y - self.y
-        else:
-            tx = (player.x - self.x)
-            ty = player.y - self.y
+        tx = player.x - self.x
+        ty = player.y - self.y
         z = 100 / (abs(tx) + abs(ty))
         dx = tx * z
         dy = ty * z
@@ -852,14 +906,14 @@ def draw_world(world):
             pygame.draw.circle(world, blue, enemy.current_platform[1], 4)
             pygame.draw.circle(world, black, (enemy.jump_point, enemy.chosen_ledge[1]), 4)
         """
-        if grid_on == True:
-            draw_grid(world)
+
         if pnums == True:
             draw_pnums(world)
 
     else:
         menu.game_over(world)
-
+    if grid_on == True:
+        draw_grid(world)
     for chest in chests:
         chest.draw(world)
 
@@ -943,7 +997,7 @@ def create_level():
 
         level_player = [0, 0]
 
-        level_chests.append(Chest(1700, 900))
+        level_chests.append(Chest(450, 56))
 
 
         return [level_platforms, level_coins, level_chests, level_enemies, level_player]
@@ -1023,8 +1077,6 @@ white = (254, 254, 254)
 
 game_font = "consolab.ttf"
 
-hud = HUD()
-menu = Menu()
 
 """
 LEVEL CREATION
@@ -1038,7 +1090,8 @@ chests = []
 enemies = []
 projectiles = []
 player = Player(0,0)
-
+hud = HUD()
+menu = Menu()
 
 
 
