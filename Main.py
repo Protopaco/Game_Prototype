@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 import spritesheet
+import Level_Creator
 
 pygame.init()
 
@@ -975,9 +976,8 @@ def load_level(level):
         chests.append(chest)
     for enemy in level[3]:
         enemies.append(enemy)
-        print(enemies)
-    player.x = level[4][0]
-    player.y = level[4][1]
+    #player.x = level[4][0]
+    #player.y = level[4][1]
 
 def create_level():
         level_platforms = []
@@ -985,8 +985,8 @@ def create_level():
         level_chests = []
         level_enemies = []
         level_player = []
-
-
+        level_platforms.append(Level_Creator.one_tile(500, 500, 1))
+        """
         level_platforms.append(Platform(0, worldy-64, 1920, 64, ground, "ground"))
         level_platforms.append(Platform(0, 348, 128, 64, mdm_platform, 1))
         level_platforms.append(Platform(160, 288, 64, 64, sml_platform, 2))
@@ -1027,7 +1027,7 @@ def create_level():
 
         level_chests.append(Chest(450, 56))
 
-
+        """
         return [level_platforms, level_coins, level_chests, level_enemies, level_player]
 
 def draw_grid(world):
