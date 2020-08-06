@@ -16,7 +16,7 @@ class Menu(object):
         self.x = worldx
         self.score_y = 5
         self.font_size = 42
-        self.max_font_size = 104
+        self.max_font_size = 90
         self.score_font = pygame.font.Font(game_font, self.font_size)
         self.cs = spritesheet.spritesheet(os.path.join('images/object', 'coin100.png'))
         self.coin_ani_count = 0
@@ -31,8 +31,7 @@ class Menu(object):
         self.dy = 0
         self.player_height = player.height
         self.max_player_height = 220
-        self.menu_font_size = 120
-        self.menu_font = pygame.font.Font(game_font, self.menu_font_size)
+        self.menu_font = pygame.font.Font(game_font, self.max_font_size)
         self.score_spacer = 5
         self.score_width = 0
         self.transition_speed = 10
@@ -123,13 +122,13 @@ class Menu(object):
                 y_n_width = y_n.get_width()
                 self.blink += 1
 
-                world.blit(you_won_o, ((worldx // 2) - (you_won_width //2) + 2, self.score_y - self.score_spacer - self.menu_font_size + 2))
-                world.blit(you_won, ((worldx // 2) - (you_won_width // 2), self.score_y - self.score_spacer - self.menu_font_size))
-                world.blit(play_again_o, ((worldx // 2) - (play_again_width // 2) + 2, self.score_y + self.menu_font_size + self.score_spacer + 2))
-                world.blit(play_again, ((worldx // 2) - (play_again_width // 2), self.score_y +  self.menu_font_size + self.score_spacer))
+                world.blit(you_won_o, (round(((worldx // 2) - (you_won_width // 2) + 2)), (round(self.score_y - self.score_spacer - self.max_font_size + 2))))
+                world.blit(you_won, (round((worldx // 2) - (you_won_width // 2)), round(self.score_y - self.score_spacer - self.max_font_size)))
+                world.blit(play_again_o, (round((worldx // 2) - (play_again_width // 2) + 2), round(self.score_y + self.max_font_size + self.score_spacer + 2)))
+                world.blit(play_again, (round((worldx // 2) - (play_again_width // 2)), round(self.score_y +  self.max_font_size + self.score_spacer)))
                 if self.blink < 30:
-                    world.blit(y_n_o, ((worldx // 2) - (y_n_width // 2) + 2, self.score_y + (self.menu_font_size * 2) + (self.score_spacer * 2) + 2))
-                    world.blit(y_n, ((worldx // 2) - (y_n_width // 2), self.score_y + (self.menu_font_size * 2) + (self.score_spacer * 2)))
+                    world.blit(y_n_o, (round((worldx // 2) - (y_n_width // 2) + 2), round(self.score_y + (self.max_font_size * 2) + (self.score_spacer * 2) + 2)))
+                    world.blit(y_n, (round((worldx // 2) - (y_n_width // 2)), round(self.score_y + (self.max_font_size * 2) + (self.score_spacer * 2))))
                 if self.blink > 50:
                     self.blink = 0
 
@@ -185,7 +184,7 @@ class Player(object):
         self.jump_r = self.js.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
         self.dance_r = self.ds.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
         self.ko_r = self.ks.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
-        self.run_l = self.rls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
+        self.run_l = self.rls.load_strip((30, 25, 100, 100),  11, (0, 0, 0))
         self.idle_l = self.sls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
         self.jump_l = self.jls.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
         self.dance_l = self.dls.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
@@ -210,8 +209,8 @@ class Player(object):
         self.vel = 5
         self.coin_count = 0
         self.current_platform = [(0,0), (0,0)]
-        self.melee_length = 100
-        self.melee_damage = 200
+        self.melee_length = 50
+        self.melee_damage = 150
         self.melee_direction = 0
         self.hit_box = [0, 0, 0, 0]
         self.attack_box = [0, 0, 0, 0]
@@ -219,12 +218,12 @@ class Player(object):
 
     def draw(self, world):
         self.move()
-        self.hit_box = [self.x, self.y, self.width, self.height]
+        self.hit_box = [self.x + 5, self.y + 5, self.width - 5, self.height - 5]
         if self.last_direction > 0:
             self.attack_box = [self.x, self.y, self.width + self.melee_length, self.height]
         else:
             self.attack_box = [self.x - self.melee_length, self.y, self.width + self.melee_length, self.height]
-        pygame.draw.rect(world, blue, self.attack_box, 1)
+        #pygame.draw.rect(world, blue, self.attack_box, 1)
         #pygame.draw.rect(world, red, self.hit_box, 1)
         if self.walk_count >= (self.ani_speed * len(self.run_r)) - 1:
             self.walk_count = 0
@@ -263,19 +262,14 @@ class Player(object):
 
         # Gravity
         if not self.is_jump:
-            self.not_falling = self.collision(0, self.gravity)
-            if not self.not_falling:
+            if not self.collision(0, self.gravity):
+                self.is_falling = True
                 self.gravity += uni_grav_acel
             else:
                 self.gravity = uni_grav_acel
                 self.is_jump = False
                 self.jump_vel = self.max_jump_vel
-
-        # Coin Collision
-        for coin in coins:
-            if self.x + self.width > coin.x and self.x < coin.x + coin.width and self.y + self.width > coin.y and self.y < coin.y + coin.width:
-                self.coin_count += 1
-                coins.pop(coins.index(coin))
+                self.is_falling = False
 
         # Chest Collision
         for chest in chests:
@@ -289,10 +283,14 @@ class Player(object):
         #print("collision: {x}, {y}".format(x=x, y=y))
         while collision is False and count < len(platforms):
             if self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height + y > platforms[count].dimensions[2] and self.y + y < platforms[count].dimensions[3]:
+                if self.is_falling or self.is_jump:
+                    if y > self.y + self.height - platforms[count].dimensions[2]:
+                        self.y = platforms[count].dimensions[2] - self.height
                 collision = True
             elif self.x + x < 0 or self.x + self.width + x > worldx:
                 collision = True
             elif self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height > platforms[count].dimensions[2] - y and self.y + y < platforms[count].dimensions[3]:
+                print("here!")
                 collision = True
                 self.y = platforms[count].dimensions[2] + self.height
                 self.x += x
@@ -326,16 +324,16 @@ class Player(object):
         self.direction = 0
 
     def melee(self):
-        print("attack!")
         for enemy in enemies:
             if self.attack_box[0] < enemy.x < self.attack_box[0] + self.attack_box[2] or self.attack_box[0] < enemy.x + enemy.height < self.attack_box[0] + self.attack_box[2] :
-                print(enemy.x)
                 if self.attack_box[1] < enemy.y + enemy.height < self.attack_box[1] + self.attack_box[3]:
                     enemy.hit(self.melee_damage)
                 elif self.attack_box[1] < enemy.y < self.attack_box[1] + self.attack_box[3]:
                     enemy.hit(self.melee_damage)
 
-
+    def coin_collected(self, coin):
+        self.coin_count += 1
+        coins.remove(coin)
 
     def hit(self, projectile):
         self.hp -= projectile.damage
@@ -437,8 +435,9 @@ class enemy(object):
         if not self.is_jump:
             if self.collision(0, self.gravity) == False:
                 self.is_falling = True
-                if self.is_falling:
-                    self.gravity += uni_grav_acel
+                #print("falling!")
+                #if self.is_falling:
+                self.gravity += uni_grav_acel
             else:
                 self.gravity = uni_grav_acel
                 self.is_jump = False
@@ -481,13 +480,11 @@ class enemy(object):
         if self.direction != 1:
             self.direction = 1
             self.walk_count = 0
-            #self.width = 26
 
     def move_left(self):
         if self.direction != -1:
             self.direction = -1
             self.walk_count = 0
-            #self.width = 26
 
     def stand(self):
         self.direction = 0
@@ -537,7 +534,7 @@ class red_guy(enemy):
         self.find_ledges(level_platforms)
         self.jump_height, self.jump_width = self.find_max_height()
         self.chosen_ledge = []
-        self.jump_point = 1900
+        self.jump_point = worldy
         self.choose_ledge()
         self.current_platform = [(0,0), (0,0)]
         self.label = "red_guy"
@@ -578,7 +575,7 @@ class red_guy(enemy):
                 else:
                     self.move_right()
             self.run_away_vel -= 1
-        elif self.scared and self.run_away_vel < 0:
+        elif self.scared and self.run_away_vel <= 0:
             self.scared = False
             self.run_count = 0
             self.choose_ledge()
@@ -614,7 +611,6 @@ class red_guy(enemy):
 
 
     def hit(self, damage):
-        print("I'm scared!")
         self.run_away_vel = damage
         self.direction *= -1
         self.scared = True
@@ -763,6 +759,7 @@ class Ani_Item(object):
     def draw(self, world):
         if self.settled is False:
             self.gravity()
+        self.player_collision()
         world.blit(self.img_ani[round(self.ani_count)], (self.x, self.y))
         self.ani_count += self.rotation_rate
         if self.ani_count >= len(self.img_ani) -1:
@@ -782,6 +779,10 @@ class Ani_Item(object):
     def gravity(self):
         if self.collision(uni_grav_acel) is True:
             self.settled = True
+
+    def player_collision(self):
+        if self.x + self.width > player.x and self.x < player.x + player.width and self.y + self.height > player.y and self.y < player.y + player.height:
+            player.coin_collected(self)
 
 class Coin(Ani_Item):
     def __init__(self, x, y):
@@ -901,13 +902,13 @@ def draw_world(world):
                     projectiles.remove(proj)
                 except ValueError:
                     print("ValueError trying to remove projectile")
-        """
-        for enemy in enemies:
-            pygame.draw.circle(world, red, (enemy.chosen_ledge[0], enemy.chosen_ledge[1]), 4)
-            pygame.draw.circle(world, blue, enemy.current_platform[0], 4)
-            pygame.draw.circle(world, blue, enemy.current_platform[1], 4)
-            pygame.draw.circle(world, black, (enemy.jump_point, enemy.chosen_ledge[1]), 4)
-        """
+        if e_ledge_finder:
+            for enemy in enemies:
+                pygame.draw.circle(world, red, (enemy.chosen_ledge[0], enemy.chosen_ledge[1]), 4)
+                pygame.draw.circle(world, blue, enemy.current_platform[0], 4)
+                pygame.draw.circle(world, blue, enemy.current_platform[1], 4)
+                pygame.draw.circle(world, black, (enemy.jump_point, enemy.chosen_ledge[1]), 4)
+
 
         if pnums == True:
             draw_pnums(world)
@@ -994,7 +995,7 @@ def create_level():
             coin_x += 40
 
         level_enemies.append(red_guy(1400, 980, level_platforms))
-        level_enemies.append(red_guy(660, 600, level_platforms))
+        #level_enemies.append(red_guy(660, 600, level_platforms))
         #level_enemies.append(blue_guy(200, 400))
 
         level_player = [0, 0]
@@ -1023,6 +1024,13 @@ def draw_grid(world):
 
         pygame.draw.line(world, black, (0, y), (worldx, y))
 
+
+def e_ledge_find(e_ledge_finder):
+    if e_ledge_finder:
+        e_ledge_finder = False
+    else:
+        e_ledge_finder = True
+    return e_ledge_finder
 
 def display_grid(grid_on):
     if grid_on == False:
@@ -1065,6 +1073,7 @@ sml_platform = (os.path.join('images', '1TilePlatform64x64.png'))
 mdm_platform = (os.path.join('images', '2TilePlatform128x64.png'))
 grid_on = False
 pnums = False
+e_ledge_finder = False
 
 
 # key presses
@@ -1119,6 +1128,8 @@ while main is True:
                 grid_on = display_grid(grid_on)
             if event.key == pygame.K_p:
                 pnums = display_pnums(pnums)
+            if event.key == pygame.K_w:
+                e_ledge_finder = e_ledge_find(e_ledge_finder)
             if menu.game_win == True:
                 if event.key == pygame.K_y:
                     menu.game_win = False
