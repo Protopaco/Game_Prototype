@@ -222,6 +222,7 @@ class Player(object):
         self.hit_box = [0, 0, 0, 0]
         self.attack_box = [0, 0, 0, 0]
         self.knocked_out = False
+        self.jump_height, self.jump_width = self.find_max_height()
 
 
     def draw(self, world):
@@ -363,6 +364,17 @@ class Player(object):
         if self.hp < 1:
             self.walk_count = 0
             self.knocked_out = True
+
+    def find_max_height(self):
+        max_height = 0
+        max_width = 0
+        while self.jump_vel > 0:
+            max_height += self.jump_vel
+            max_width += self.vel
+            self.jump_vel -= uni_grav_acel
+
+        self.jump_vel = self.max_jump_vel
+        return round(max_height), round(max_width)
 
 
 class Platform(object):
@@ -984,8 +996,8 @@ def create_level():
         level_coins = []
         level_chests = []
         level_enemies = []
-        level_player = []
-        level_platforms.append(Level_Creator.one_tile(500, 500, 1))
+        level_player = [Player(0, 0)]
+        level_platforms = (Level_Creator.level_creator(worldx, worldy, level_player[0].jump_width, level_player[0].jump_height))
         """
         level_platforms.append(Platform(0, worldy-64, 1920, 64, ground, "ground"))
         level_platforms.append(Platform(0, 348, 128, 64, mdm_platform, 1))

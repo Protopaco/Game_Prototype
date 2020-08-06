@@ -103,9 +103,17 @@ class two_tile_coin(two_tile):
         self.coin = 2
 
 # base method for creating platforms in the world, just calls other methods to create different kinds of platforms
-def create_platforms(worldx, worldy):
+def create_platforms(worldx, worldy, jump_width, jump_height):
+    return_platforms = []
+
     ground = create_ground(worldx, worldy)
-    platforms = pyramid_pattern(worldx, worldy)
+    platforms = pyramid_pattern(worldx, worldy, jump_width, jump_height)
+
+    return_platforms.append(ground)
+    for plat in platforms:
+        return_platforms.append(plat)
+
+    return return_platforms
 
 
 
@@ -117,16 +125,27 @@ def create_ground(worldx, worldy):
 
 # create the chest(goal) in middle third and top third of screen, random location
 # this is for the first 'pyramid_pattern', more patterns to come later
-def pyramid_pattern(worldx, worldy):
-
+def pyramid_pattern(worldx, worldy, jump_width, jump_height):
+    platform_list = []
     chest_plat_x = random.randrange(worldx // 3, (worldx // 3) * 2)
     chest_plat_y = random.randrange(0, worldy // 3)
     chest = one_tile_chest(chest_plat_x, chest_plat_y, 'chest')
-    recurse_pyramid(chest.x, chest.x + chest.width, chest.y)
+    platform_list.append(chest)
+    generated_platforms = recurse_pyramid(chest.x, chest.x + chest.width, chest.surface, jump_width, jump_height, 0)
+    for plat in generated_platforms:
+        platform_list.append(plat)
+    return platform_list
 
 # populates the rest of the
-def recurse_pyramid(leftx, rightx, y):
-    pass
+def recurse_pyramid(current_left_x, current_right_x, current_surface, jump_width, jump_height, plat_label):
+    # choose left platform type:
+    plat_label += 1
+    left_plat_type = platform_types[random.randrange(0, len(platform_types) - 1)]
+    new_left_plat_x = random.randrange(jump_width * -1, current_left_x)
+    new_left_plat_y = random.randrange(current_surface, current_surface + jump_height)
+    new_left_plat = left_plat_type(new_left_plat_x, new_left_plat_y, plat_label)
+
+    return [new_left_plat]
 
 
 
@@ -134,6 +153,9 @@ def recurse_pyramid(leftx, rightx, y):
 
 
 
+
+#types of platforms
+platform_types = [one_tile, one_tile_coin, two_tile, two_tile_coin]
 
 # base class for level creation
 # starts by creating the platforms
@@ -143,14 +165,16 @@ def recurse_pyramid(leftx, rightx, y):
 # finally adds player
 # returns list of lists
 
-def level_creator(worldx, worldy):
+def level_creator(worldx, worldy, jump_width, jump_height):
     level_platforms = []
     level_coins = []
     level_chests = []
     level_enemies = []
     level_player = []
 
-    level_platforms = create_platforms(worldx, worldy)
+    level_platforms = create_platforms(worldx, worldy, jump_width, jump_height)
+
+    return level_platforms
     pass
 
 
