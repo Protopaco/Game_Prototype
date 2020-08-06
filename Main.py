@@ -185,6 +185,7 @@ class Player(object):
         self.jls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_jump_l.png'))
         self.dls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_dance_l.png'))
         self.kls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_ko_l.png'))
+
         # create animation lists
         self.run_r = self.rs.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
         self.idle_r = self.ss.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
@@ -229,7 +230,7 @@ class Player(object):
         self.move()
         if self.knocked_out == True:
             if self.walk_count < len(self.ko_r):
-                print("here")
+                #print("here")
                 if self.last_direction > 1:
                     world.blit(self.ko_r[self.walk_count], (round(self.x), round(self.y)))
                 else:
@@ -309,10 +310,10 @@ class Player(object):
                     if y > self.y + self.height - platforms[count].dimensions[2]:
                         self.y = platforms[count].dimensions[2] - self.height
                 collision = True
+                #print(collision)
             elif self.x + x < 0 or self.x + self.width + x > worldx:
                 collision = True
             elif self.x + self.width + x > platforms[count].dimensions[0] and self.x + x < platforms[count].dimensions[1] and self.y + self.height > platforms[count].dimensions[2] - y and self.y + y < platforms[count].dimensions[3]:
-                print("here!")
                 collision = True
                 self.y = platforms[count].dimensions[2] + self.height
                 self.x += x
@@ -322,6 +323,7 @@ class Player(object):
         if collision == False:
             self.x += x
             self.y = int(y + self.y)
+
         return collision
 
     def jump(self):
@@ -376,7 +378,7 @@ class Player(object):
         self.jump_vel = self.max_jump_vel
         return round(max_height), round(max_width)
 
-
+"""
 class Platform(object):
     def __init__(self, x, y, width, height, filename, label):
         self.x = x
@@ -392,7 +394,7 @@ class Platform(object):
 
     def draw(self, world):
         world.blit(self.img, (self.x, self.y))
-
+"""
 class enemy(object):
     def __init__(self, x, y):
         self.x = x
@@ -855,7 +857,8 @@ class Chest(Ani_Item):
         #self.coordinates = [self.x, self.y, self.x + self.width, self.y + self.height]
 
     def draw(self, world):
-        if player.x > self.x and player.x < self.x + self.width and player.y + (player.height // 2) > self.y and player.y + (player.height //2 ) < self.y + self.height:
+        #pygame.draw.rect(world, blue, (self.x, self.y, self.width, self.height), 2)
+        if coins == [] and player.x + player.width > self.x and player.x < self.x + self.width and player.y + (player.height // 2) > self.y and player.y + (player.height // 2) < self.y + self.height:
             self.triggered = True
             if self.ani_count < len(self.img_ani) - 1:
                 world.blit(self.img_ani[round(self.ani_count)], (self.x, self.y))
@@ -870,7 +873,6 @@ class Chest(Ani_Item):
             if self.settled is False:
                 self.gravity()
             world.blit(self.img_ani[0], (self.x, self.y))
-
 
 class projectile(object):
     def __init__(self, x, y, dx, dy):
@@ -973,31 +975,39 @@ def clear_level():
     coins.clear()
     chests.clear()
     enemies.clear()
+    player.x = 0
+    player.y = 0
+    player.hp = player.max_hp
     for i in enemies:
         print(i.label)
 
 
 def load_level(level):
-    print("Load Level!")
+    #print("Load Level!")
     game_win = False
     for platform in level[0]:
-        platforms.append(platform)
+        if platform.x > 0 and platform.x + platform.width < worldx:
+            platforms.append(platform)
+        elif platform.label == 'ground':
+            platforms.append(platform)
     for coin in level[1]:
-        coins.append(coin)
+        coins.append(Coin(coin[0], coin[1]))
     for chest in level[2]:
-        chests.append(chest)
+        chests.append(Chest(chest[0], chest[1]))
     for enemy in level[3]:
-        enemies.append(enemy)
-    #player.x = level[4][0]
-    #player.y = level[4][1]
+        enemies.append(red_guy(enemy[0], enemy[1], platforms))
+    return level[4]
+
 
 def create_level():
         level_platforms = []
         level_coins = []
         level_chests = []
         level_enemies = []
-        level_player = [Player(0, 0)]
-        level_platforms = (Level_Creator.level_creator(worldx, worldy, level_player[0].jump_width, level_player[0].jump_height))
+        level_master = (Level_Creator.level_creator(worldx, worldy, player.jump_width, player.jump_height))
+
+
+
         """
         level_platforms.append(Platform(0, worldy-64, 1920, 64, ground, "ground"))
         level_platforms.append(Platform(0, 348, 128, 64, mdm_platform, 1))
@@ -1040,7 +1050,7 @@ def create_level():
         level_chests.append(Chest(450, 56))
 
         """
-        return [level_platforms, level_coins, level_chests, level_enemies, level_player]
+        return level_master
 
 def draw_grid(world):
     gridfont = pygame.font.SysFont('0', 20)
@@ -1130,7 +1140,6 @@ game_font = "consolab.ttf"
 LEVEL CREATION
 """
 
-demo_level = create_level()
 
 platforms = []
 coins = []
@@ -1138,6 +1147,8 @@ chests = []
 enemies = []
 projectiles = []
 player = Player(0,0)
+demo_level = create_level()
+load_level(demo_level)
 hud = HUD()
 menu = Menu()
 
@@ -1147,7 +1158,7 @@ menu = Menu()
 Main Loop
 """
 # game loop
-load_level(demo_level)
+
 main = True
 while main is True:
     for event in pygame.event.get():

@@ -2,6 +2,7 @@ import random
 import os
 import spritesheet
 import pygame
+#import Main
 pygame.init()
 
 tile_height = 64
@@ -88,7 +89,7 @@ class two_tile(Platform):
         self.surface = y + 14
         self.img = pygame.image.load(os.path.join('images', '2TilePlatform128x64.png'))
         self.width = tile_width * 2
-        self.height = tile_height * 2
+        self.height = tile_height
         self.coin = 0
         self.chest = False
         self.label = label
@@ -105,15 +106,22 @@ class two_tile_coin(two_tile):
 # base method for creating platforms in the world, just calls other methods to create different kinds of platforms
 def create_platforms(worldx, worldy, jump_width, jump_height):
     return_platforms = []
-
+    coin_list = []
+    chest_list = []
     ground = create_ground(worldx, worldy)
     platforms = pyramid_pattern(worldx, worldy, jump_width, jump_height)
 
     return_platforms.append(ground)
     for plat in platforms:
         return_platforms.append(plat)
+        if plat.coin > 0:
+            coin_list.append([plat.x + (tile_width // 2) - 20, plat.y - 20])
+        if plat.coin > 1:
+            coin_list.append([plat.x + (tile_width * 1.5) - 20, plat.y - 20])
+        if plat.chest == True:
+            chest_list.append([plat.x + (tile_width // 2) - 20, plat.y - 40])
 
-    return return_platforms
+    return return_platforms, coin_list, chest_list
 
 
 
@@ -127,35 +135,93 @@ def create_ground(worldx, worldy):
 # this is for the first 'pyramid_pattern', more patterns to come later
 def pyramid_pattern(worldx, worldy, jump_width, jump_height):
     platform_list = []
+    label_count = 0
     chest_plat_x = random.randrange(worldx // 3, (worldx // 3) * 2)
-    chest_plat_y = random.randrange(0, worldy // 3)
+    chest_plat_y = random.randrange(100, worldy // 3)
     chest = one_tile_chest(chest_plat_x, chest_plat_y, 'chest')
     platform_list.append(chest)
-    generated_platforms = recurse_pyramid(chest.x, chest.x + chest.width, chest.surface, jump_width, jump_height, 0)
-    for plat in generated_platforms:
+    generated_platforms_l = recurse_pyramid_l(chest.x, chest.x + chest.width, chest.surface, jump_width, jump_height, worldy)
+    generated_platforms_r = recurse_pyramid_r(chest.x + chest.width, chest.surface, jump_width, jump_height, worldy)
+
+    for plat in generated_platforms_l:
+        label_count += 1
+        plat.label = label_count
         platform_list.append(plat)
+
+
+    for plat in generated_platforms_r:
+        label_count += 1
+        plat.label = label_count
+        platform_list.append(plat)
+
+
+    print(label_count)
     return platform_list
 
+
+def recurse_pyramid_r(current_right_x, current_surface, jump_width, jump_height, worldy):
+    right_pyramid_list = []
+    right_list = []
+    # create right platform
+    right_plat_type = platform_types[random.randrange(0, len(platform_types) - 1)]
+    temp = right_plat_type(0, 0, '0')
+    temp_x = random.randrange(current_right_x, current_right_x + jump_width)
+    temp_y = current_surface + jump_height - tile_height #random.randrange(current_surface, current_surface + jump_height)
+    right_plat = right_plat_type(temp_x, temp_y, 'temp')
+    if right_plat.surface < worldy - jump_height - tile_height:
+        right_list = recurse_pyramid_r(right_plat.x + right_plat.width, right_plat.surface, jump_width, jump_height, worldy)
+
+    right_pyramid_list.append(right_plat)
+
+    if right_list != []:
+        for plat in right_list:
+            right_pyramid_list.append(plat)
+
+    return right_pyramid_list
+
+
+
 # populates the rest of the
-def recurse_pyramid(current_left_x, current_right_x, current_surface, jump_width, jump_height, plat_label):
-    # choose left platform type:
-    plat_label += 1
-    left_plat_type = platform_types[random.randrange(0, len(platform_types) - 1)]
-    new_left_plat_x = random.randrange(jump_width * -1, current_left_x)
-    new_left_plat_y = random.randrange(current_surface, current_surface + jump_height)
-    new_left_plat = left_plat_type(new_left_plat_x, new_left_plat_y, plat_label)
+def recurse_pyramid_l(current_left_x, current_right_x, current_surface, jump_width, jump_height, worldy):
+    pyramid_list = []
+    left_list = []
+    right_list = []
+    # choose left platform
+    left_plat_type = platform_types[random.randrange(0, len(platform_types))]
+    temp = left_plat_type(0, 0, '0')
+    temp_x = random.randrange(current_left_x - temp.width - jump_width, current_left_x - temp.width)
+    temp_y = current_surface + jump_height - tile_height #random.randrange(current_surface, current_surface + jump_height)
+    left_plat = left_plat_type(temp_x, temp_y, 'temp')
 
-    return [new_left_plat]
+    # create right platform
+    right_plat_type = platform_types[random.randrange(0, len(platform_types))]
+    right_plat = right_plat_type(0, 0, '0')
+    right_plat.x = random.randrange(current_right_x, current_right_x + jump_width)
+    right_plat.y = current_surface + jump_height - tile_height #random.randrange(current_surface, current_surface + jump_height)
+    right_plat.surface = right_plat.y + 14
 
+    if left_plat.surface < worldy - jump_height:
+        left_list = recurse_pyramid_l(left_plat.x, left_plat.x + left_plat.width, left_plat.surface, jump_width, jump_height, worldy)
 
+    if right_plat.surface < worldy - jump_height - 50:
+        right_list = recurse_pyramid_r(right_plat.x + right_plat.width, right_plat.surface, jump_width, jump_height, worldy)
 
+    pyramid_list.append(left_plat)
+    #pyramid_list.append(right_plat)
 
+    if left_list != []:
+        for plat in left_list:
+            pyramid_list.append(plat)
 
+    if right_list != []:
+        for plat in right_list:
+            pyramid_list.append(plat)
 
+    return pyramid_list
 
 
 #types of platforms
-platform_types = [one_tile, one_tile_coin, two_tile, two_tile_coin]
+platform_types = [one_tile_coin, two_tile_coin]
 
 # base class for level creation
 # starts by creating the platforms
@@ -172,10 +238,11 @@ def level_creator(worldx, worldy, jump_width, jump_height):
     level_enemies = []
     level_player = []
 
-    level_platforms = create_platforms(worldx, worldy, jump_width, jump_height)
+    level_platforms, level_coins, level_chests = create_platforms(worldx, worldy, jump_width, jump_height)
+    level_enemies = [[1800, 900], [200, 900]]
 
-    return level_platforms
-    pass
+    return [level_platforms, level_coins, level_chests, level_enemies, level_player]
+
 
 
 
