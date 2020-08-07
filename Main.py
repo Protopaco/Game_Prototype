@@ -41,6 +41,7 @@ class Menu(object):
         self.score_height = self.font_size
         self.transition_diff = round((self.x + (self.score_width / 2) / (worldx / 2)))
         self.win_state = False
+        self.lose_state = False
         self.blink = 0
 
         for i in range(0, len(self.coin_ani)):
@@ -136,7 +137,27 @@ class Menu(object):
 
 
     def game_loss(self, world):
-        pass
+        self.game_loss_font = pygame.font.Font(game_font, self.max_font_size)
+        you_lose = self.menu_font.render("YOU LOSE!", 2, white)
+        you_lose_o = self.menu_font.render("YOU LOSE!", 2, black)
+        you_lose_width = you_lose.get_width()
+        play_again = self.menu_font.render("PLAY AGAIN?", 2, white)
+        play_again_o = self.menu_font.render("PLAY AGAIN?", 2, black)
+        play_again_width = play_again.get_width()
+        y_n = self.menu_font.render("(y/n)", 2, white)
+        y_n_o = self.menu_font.render("(y/n)", 2, black)
+        y_n_width = y_n.get_width()
+
+        world.blit(you_lose_o, (round((worldx //2) - (you_lose_width // 2) + 2), round((worldy // 2) - (self.max_font_size // 2))))
+        world.blit(you_lose, (round((worldx //2) - (you_lose_width // 2)), round((worldy // 2) - (self.max_font_size // 2))))
+        world.blit(play_again_o, (round((worldx //2) - (you_lose_width // 2) + 2), round((worldy // 2) + (self.max_font_size // 2) + self.max_font_size + 2)))
+        world.blit(play_again, (round((worldx //2) - (you_lose_width // 2)), round((worldy // 2) + (self.max_font_size // 2) + self.max_font_size)))
+        if self.blink < 30:
+            world.blit(y_n_o, (round((worldx // 2) - (y_n_width // 2) + 2), round((worldy // 2) + (self.max_font_size // 2) + (self.max_font_size * 2) + 2)))
+            world.blit(y_n, (round((worldx // 2) - (y_n_width // 2)), round((worldy // 2) + (self.max_font_size // 2) + (self.max_font_size * 2))))
+        if self.blink > 50:
+            self.blink = 0
+
 
 class HUD(object):
     def __init__(self):
@@ -189,19 +210,19 @@ class Player(object):
         # create animation lists
         self.run_r = self.rs.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
         self.idle_r = self.ss.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
-        self.jump_r = self.js.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
+        self.jump_r = self.js.load_strip((19, 20, 100, 100), 11, (0, 0, 0))
         self.dance_r = self.ds.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
-        self.ko_r = self.ks.load_strip((20, 20, 100, 100), 10, (0, 0, 0))
+        self.ko_r = self.ks.load_strip((0, 0, 100, 100), 10, (0, 0, 0))
         self.run_l = self.rls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
         self.idle_l = self.sls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
-        self.jump_l = self.jls.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
+        self.jump_l = self.jls.load_strip((19, 20, 100, 100), 11, (0, 0, 0))
         self.dance_l = self.dls.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
-        self.ko_l = self.kls.load_strip((20, 20, 100, 100), 10, (0, 0, 0))
+        self.ko_l = self.kls.load_strip((0, 0, 100, 100), 10, (0, 0, 0))
 
         # character variables
         self.x = x
         self.y = y
-        self.max_hp = 10
+        self.max_hp = 1
         self.hp = self.max_hp
         self.ani_speed = 2
         self.walk_count = 0
@@ -229,15 +250,16 @@ class Player(object):
     def draw(self, world):
         self.move()
         if self.knocked_out == True:
+            print(round(self.walk_count))
             if self.walk_count < len(self.ko_r):
                 #print("here")
-                if self.last_direction > 1:
-                    world.blit(self.ko_r[self.walk_count], (round(self.x), round(self.y)))
-                else:
-                    world.blit(self.ko_l[self.walk_count], (round(self.x), round(self.y)))
-                self.walk_count += 1
+                #if self.last_direction == 1:
+                    #world.blit(self.ko_r[self.walk_count], (round(self.x), round(self.y)))
+                #else:
+                world.blit(self.ko_l[round(self.walk_count)], (round(self.x), round(self.y)))
+                self.walk_count += .1
             else:
-               world.blit(self.ko_r[self.walk_count - 1], (round(self.x), round(self.y)))
+               world.blit(self.ko_r[-1], (round(self.x), round(self.y)))
         else:
             self.hit_box = [self.x + 5, self.y + 5, self.width - 5, self.height - 5]
             if self.last_direction > 0:
@@ -364,8 +386,10 @@ class Player(object):
         projectiles.remove(projectile)
         #print("hp: {h}".format(h=self.hp))
         if self.hp < 1:
+            self.direction = 0
             self.walk_count = 0
             self.knocked_out = True
+            menu.lose_state = True
 
     def find_max_height(self):
         max_height = 0
@@ -924,7 +948,7 @@ class acorn(projectile):
 def draw_world(world):
     world.blit(backdrop, backdropbox)
     #print(menu.win_state)
-    if menu.win_state == False:
+    if menu.win_state == False and menu.lose_state == False:
         hud.draw(world)
         for plat in platforms:
             plat.draw(world)
@@ -946,19 +970,24 @@ def draw_world(world):
                 pygame.draw.circle(world, blue, enemy.current_platform[0], 4)
                 pygame.draw.circle(world, blue, enemy.current_platform[1], 4)
                 pygame.draw.circle(world, black, (enemy.jump_point, enemy.chosen_ledge[1]), 4)
-
+        for chest in chests:
+            chest.draw(world)
 
         if pnums == True:
             draw_pnums(world)
 
     elif menu.win_state == True:
         menu.game_win(world)
-    #elif player.knocked_out == True:
-        #menu.game_loss(world)
+        for chest in chests:
+            chest.draw(world)
+
+    elif menu.lose_state == True:
+        menu.game_loss(world)
+        player.draw(world)
+
     if grid_on == True:
         draw_grid(world)
-    for chest in chests:
-        chest.draw(world)
+
 
 
 def delete_chest(trip_chest):
@@ -1187,17 +1216,31 @@ while main is True:
                     player.hp = player.max_hp
                     demo_level = create_level()
                     load_level(demo_level)
-                if event.key == pygame.K_n:
+                elif event.key == pygame.K_n:
                     main = False
                     sys.exit()
-            if event.key == pygame.K_c:
-                player.melee()
-            if event.key == pygame.K_SPACE:
-                player.jump()
-            if event.key == pygame.K_RIGHT:
-                player.move_right()
-            if event.key == pygame.K_LEFT:
-                player.move_left()
+            elif menu.lose_state == True:
+                if event.key == pygame.K_y:
+                    menu.lose_state = False
+                    clear_level()
+                    del menu
+                    del player
+                    player = Player(0, 0)
+                    menu = Menu()
+                    demo_level = create_level()
+                    load_level(demo_level)
+                elif event.key == pygame.K_n:
+                    main = False
+                    sys.exit()
+            else:
+                if event.key == pygame.K_c:
+                    player.melee()
+                if event.key == pygame.K_SPACE:
+                    player.jump()
+                if event.key == pygame.K_RIGHT:
+                    player.move_right()
+                if event.key == pygame.K_LEFT:
+                    player.move_left()
         if event.type == pygame.KEYUP:
             if event.key == pygame.K_RIGHT:
                 if player.direction == 1:
