@@ -108,10 +108,9 @@ def create_platforms(worldx, worldy, jump_width, jump_height):
     return_platforms = []
     coin_list = []
     chest_list = []
-    ground = create_ground(worldx, worldy)
     platforms = pyramid_pattern(worldx, worldy, jump_width, jump_height)
 
-    return_platforms.append(ground)
+    return_platforms.append(create_ground(worldx, worldy))
     for plat in platforms:
         return_platforms.append(plat)
         if plat.coin > 0:
@@ -131,6 +130,36 @@ def create_platforms(worldx, worldy, jump_width, jump_height):
 def create_ground(worldx, worldy):
     return solid_ground(worldx, worldy)
 
+def pyramid_pattern(worldx, worldy, jump_width, jump_height):
+    temp_list = [one_tile_chest(worldx // 2, 150, 'chest')]
+    y_level = 150 + jump_height
+    x_left = worldx // 2
+    x_right = worldx // 2 + tile_width
+    level_count = 2
+    tile_count = 0
+    while y_level < worldy - tile_height:
+        while tile_count <= level_count:
+            left_plat_type = platform_types[random.randrange(0, len(platform_types) - 1)]
+            right_plat_type = platform_types[random.randrange(0, len(platform_types) - 1)]
+            x_left -= jump_width + tile_width
+            x_right += jump_width + tile_width
+            if x_left > 0:
+                temp_list.append(left_plat_type(x_left, y_level, str(tile_count)))
+            if x_right + tile_width < worldx:
+                temp_list.append(right_plat_type(x_right, y_level, str(tile_count)))
+            tile_count += 1
+        y_level += jump_height
+        tile_count = 0
+        level_count += 1
+        x_left = worldx // 2
+        x_right = worldx //2 + tile_width
+
+
+
+
+
+    return temp_list
+"""
 # create the chest(goal) in middle third and top third of screen, random location
 # this is for the first 'pyramid_pattern', more patterns to come later
 def pyramid_pattern(worldx, worldy, jump_width, jump_height):
@@ -146,13 +175,15 @@ def pyramid_pattern(worldx, worldy, jump_width, jump_height):
     for plat in generated_platforms_l:
         label_count += 1
         plat.label = label_count
-        platform_list.append(plat)
-
+        if plat.x > 0 and plat.x + plat.width < worldx:
+            platform_list.append(plat)
 
     for plat in generated_platforms_r:
         label_count += 1
         plat.label = label_count
-        platform_list.append(plat)
+        #platform_list.append(plat)
+        if plat.x > 0 and plat.x + plat.width < worldx:
+            platform_list.append(plat)
 
 
     print(label_count)
@@ -218,7 +249,7 @@ def recurse_pyramid_l(current_left_x, current_right_x, current_surface, jump_wid
             pyramid_list.append(plat)
 
     return pyramid_list
-
+"""
 
 #types of platforms
 platform_types = [one_tile_coin, two_tile_coin]
@@ -239,7 +270,7 @@ def level_creator(worldx, worldy, jump_width, jump_height):
     level_player = []
 
     level_platforms, level_coins, level_chests = create_platforms(worldx, worldy, jump_width, jump_height)
-    level_enemies = [[1800, 900], [200, 900]]
+    level_enemies = [[0, worldy - 100], [worldx - 100, worldy - 100]]
 
     return [level_platforms, level_coins, level_chests, level_enemies, level_player]
 

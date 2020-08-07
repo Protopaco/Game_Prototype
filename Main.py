@@ -201,6 +201,7 @@ class Player(object):
         self.js = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_jump_r.png'))
         self.ds = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_dance_r.png'))
         self.ks = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_ko_r.png'))
+        self.ms = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_melee_r.png'))
         self.rls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_run_l.png'))
         self.sls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_idle_l.png'))
         self.jls = spritesheet.spritesheet(os.path.join('images/raccoon', 'raccoon_jump_l.png'))
@@ -213,6 +214,7 @@ class Player(object):
         self.jump_r = self.js.load_strip((19, 20, 100, 100), 11, (0, 0, 0))
         self.dance_r = self.ds.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
         self.ko_r = self.ks.load_strip((0, 0, 100, 100), 10, (0, 0, 0))
+        self.melee_r = self.ms.load_strip((19, 19, 100, 100), 14, (0, 0, 0))
         self.run_l = self.rls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
         self.idle_l = self.sls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
         self.jump_l = self.jls.load_strip((19, 20, 100, 100), 11, (0, 0, 0))
@@ -222,7 +224,7 @@ class Player(object):
         # character variables
         self.x = x
         self.y = y
-        self.max_hp = 1
+        self.max_hp = 10
         self.hp = self.max_hp
         self.ani_speed = 2
         self.walk_count = 0
@@ -245,21 +247,23 @@ class Player(object):
         self.attack_box = [0, 0, 0, 0]
         self.knocked_out = False
         self.jump_height, self.jump_width = self.find_max_height()
+        self.is_melee = False
 
 
     def draw(self, world):
         self.move()
         if self.knocked_out == True:
-            print(round(self.walk_count))
-            if self.walk_count < len(self.ko_r):
-                #print("here")
-                #if self.last_direction == 1:
-                    #world.blit(self.ko_r[self.walk_count], (round(self.x), round(self.y)))
-                #else:
-                world.blit(self.ko_l[round(self.walk_count)], (round(self.x), round(self.y)))
-                self.walk_count += .1
+            if self.walk_count < len(self.ko_r) - 1:
+                if self.last_direction == 1:
+                    world.blit(self.ko_r[round(self.walk_count)], (round(self.x), round(self.y)))
+                else:
+                    world.blit(self.ko_l[round(self.walk_count)], (round(self.x), round(self.y)))
+                self.walk_count += .2
             else:
-               world.blit(self.ko_r[-1], (round(self.x), round(self.y)))
+                if self.last_direction == 1:
+                    world.blit(self.ko_r[-1], (round(self.x), round(self.y)))
+                else:
+                    world.blit(self.ko_l[-1], (round(self.x), round(self.y)))
         else:
             self.hit_box = [self.x + 5, self.y + 5, self.width - 5, self.height - 5]
             if self.last_direction > 0:
@@ -268,21 +272,32 @@ class Player(object):
                 self.attack_box = [self.x - self.melee_length, self.y, self.width + self.melee_length, self.height]
             #pygame.draw.rect(world, blue, self.attack_box, 1)
             #pygame.draw.rect(world, red, self.hit_box, 1)
-            if self.walk_count >= (self.ani_speed * len(self.run_r)) - 1:
-                self.walk_count = 0
-            if self.direction == 0 and self.last_direction == 1:
-                world.blit(self.idle_r[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
-            elif self.direction == 0 and self.last_direction == -1:
-                world.blit(self.idle_l[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
-            elif self.is_jump:
-                if self.direction == 1:
-                    world.blit(self.jump_r[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
+            if self.is_melee:
+                if self.walk_count < len(self.melee_r) - 1:
+                    world.blit(self.melee_r[round(self.walk_count)], (self.x, self.y))
+                    self.walk_count += .1
                 else:
-                    world.blit(self.jump_l[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
-            elif self.direction == 1:
-                world.blit(self.run_r[self.walk_count // self.ani_speed], (self.x, self.y))
-            elif self.direction == -1:
-                world.blit(self.run_l[self.walk_count // self.ani_speed], (self.x, self.y))
+                    self.is_melee = False
+                    self.walk_count = 0
+
+
+
+            else:
+                if self.walk_count >= (self.ani_speed * len(self.run_r)) - 1:
+                    self.walk_count = 0
+                if self.direction == 0 and self.last_direction == 1:
+                    world.blit(self.idle_r[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
+                elif self.direction == 0 and self.last_direction == -1:
+                    world.blit(self.idle_l[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
+                elif self.is_jump:
+                    if self.direction == 1:
+                        world.blit(self.jump_r[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
+                    else:
+                        world.blit(self.jump_l[self.walk_count // self.ani_speed], (int(self.x), int(self.y)))
+                elif self.direction == 1:
+                    world.blit(self.run_r[self.walk_count // self.ani_speed], (self.x, self.y))
+                elif self.direction == -1:
+                    world.blit(self.run_l[self.walk_count // self.ani_speed], (self.x, self.y))
 
             self.walk_count += 1
 
@@ -370,6 +385,8 @@ class Player(object):
         self.direction = 0
 
     def melee(self):
+        self.is_melee = True
+        self.walk_count = 0
         for enemy in enemies:
             if self.attack_box[0] < enemy.x < self.attack_box[0] + self.attack_box[2] or self.attack_box[0] < enemy.x + enemy.height < self.attack_box[0] + self.attack_box[2] :
                 if self.attack_box[1] < enemy.y + enemy.height < self.attack_box[1] + self.attack_box[3]:
@@ -1015,10 +1032,7 @@ def load_level(level):
     #print("Load Level!")
     game_win = False
     for platform in level[0]:
-        if platform.x > 0 and platform.x + platform.width < worldx:
-            platforms.append(platform)
-        elif platform.label == 'ground':
-            platforms.append(platform)
+        platforms.append(platform)
     for coin in level[1]:
         coins.append(Coin(coin[0], coin[1]))
     for chest in level[2]:
