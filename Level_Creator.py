@@ -132,23 +132,30 @@ def create_ground(worldx, worldy):
 
 def pyramid_pattern(worldx, worldy, jump_width, jump_height):
     temp_list = [one_tile_chest(worldx // 2, 150, 'chest')]
-    y_level = 150 + jump_height
+    y_level = 150 + jump_height - 10
     x_left = worldx // 2
+    x_i_left = (worldx // 2) - tile_width
+    x_i_right = (worldx // 2) + tile_width
     x_right = worldx // 2 + tile_width
     level_count = 2
     tile_count = 0
     while y_level < worldy - tile_height:
         while tile_count <= level_count:
-            left_plat_type = platform_types[random.randrange(0, len(platform_types) - 1)]
-            right_plat_type = platform_types[random.randrange(0, len(platform_types) - 1)]
-            x_left -= jump_width + tile_width
-            x_right += jump_width + tile_width
+            left_plat_type = platform_types[random.randrange(0, len(platform_types)-1)]
+            right_plat_type = platform_types[random.randrange(0, len(platform_types)-1)]
+            x_left -= jump_width + tile_width * level_count
+            x_i_left -= 12
+            x_right += jump_width + tile_width * level_count
+            x_i_right += 12
             if x_left > 0:
                 temp_list.append(left_plat_type(x_left, y_level, str(tile_count)))
+            if tile_count < 2:
+                temp_list.append(left_plat_type(x_i_left, y_level-5, str(tile_count)))
+                temp_list.append(right_plat_type(x_i_right, y_level -5, str(tile_count)))
             if x_right + tile_width < worldx:
                 temp_list.append(right_plat_type(x_right, y_level, str(tile_count)))
-            tile_count += 1
-        y_level += jump_height
+            tile_count += level_count
+        y_level += jump_height - 10
         tile_count = 0
         level_count += 1
         x_left = worldx // 2
@@ -270,7 +277,7 @@ def level_creator(worldx, worldy, jump_width, jump_height):
     level_player = []
 
     level_platforms, level_coins, level_chests = create_platforms(worldx, worldy, jump_width, jump_height)
-    level_enemies = [[0, worldy - 100], [worldx - 100, worldy - 100]]
+    level_enemies = [[0, 0]]#, [worldx - 50, 0]]
 
     return [level_platforms, level_coins, level_chests, level_enemies, level_player]
 

@@ -214,7 +214,7 @@ class Player(object):
         self.jump_r = self.js.load_strip((19, 20, 100, 100), 11, (0, 0, 0))
         self.dance_r = self.ds.load_strip((20, 20, 100, 100), 11, (0, 0, 0))
         self.ko_r = self.ks.load_strip((0, 0, 100, 100), 10, (0, 0, 0))
-        self.melee_r = self.ms.load_strip((19, 19, 100, 100), 14, (0, 0, 0))
+        self.melee_r = self.ms.load_strip((17, 17, 100, 100), 14, (0, 0, 0))
         self.run_l = self.rls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
         self.idle_l = self.sls.load_strip((20, 20, 100, 100),  11, (0, 0, 0))
         self.jump_l = self.jls.load_strip((19, 20, 100, 100), 11, (0, 0, 0))
@@ -611,7 +611,7 @@ class red_guy(enemy):
         self.ledges = []
         self.find_ledges(level_platforms)
         self.jump_height, self.jump_width = self.find_max_height()
-        self.chosen_ledge = []
+        self.chosen_ledge = [0, 0, '0']
         self.jump_point = worldy
         self.choose_ledge()
         self.current_platform = [(0,0), (0,0)]
@@ -658,10 +658,13 @@ class red_guy(enemy):
             self.run_count = 0
             self.choose_ledge()
         else:
+            print("ai_chosen_ledge: {c}".format(c=self.chosen_ledge))
+            print("is_jump: {j}".format(j=self.is_jump))
+            print("is_falling: {f}".format(f= self.is_falling))
             if self.throw_count >= 100 and len(projectiles) < 5:
                 self.throw_acorn()
                 self.throw_count = 0
-            if self.is_jump is False and self.chosen_ledge != [0,0,'0']:
+            if self.is_jump is False and self.is_falling is False:
                 self.choose_ledge()
             if self.chosen_ledge == [0,0,'0']:
                 self.stand()
@@ -670,7 +673,7 @@ class red_guy(enemy):
                 #print("right>")
                 if self.is_jump is False:
                     if self.jump_point == self.current_platform[1][0]:
-                        if self.x >= self.jump_point - self.vel:
+                        if self.x >= self.jump_point - self.vel and self.x < self.jump_point + self.vel:
                             self.jump()
                     elif self.x + self.width >= self.jump_point:  #if npc is not currently jumping and right edge of npc is past jump point
                         self.jump()
@@ -717,8 +720,11 @@ class red_guy(enemy):
 
     def find_ledges(self, level_platforms):
         temp = []
+        label_count = 0
         for i in level_platforms:
             if i.label != 'ground':
+                i.label = label_count
+                label_count += 1
                 temp.append([i.x, i.surface, 'l', i.label, i.height])
                 temp.append([i.x+i.width, i.surface, 'r', i.label, i.height])
                 #print("x: {x}, surface: {s}".format(x=i.x+i.width, s=i.surface))
@@ -726,22 +732,30 @@ class red_guy(enemy):
 
 
     def choose_ledge(self):
-        self.chosen_ledge = [0,0,'0']
+        print("choosing start ledge: {s}".format(s= self.chosen_ledge))
+        if self.chosen_ledge == [0, 0, '0']:
+            self.chosen_ledge = self.ledges[-1]
         for i in range(len(self.ledges)-1, -1, -1):
-            if self.ledges[i][1] <= self.y + self.height and self.chosen_ledge[1] < self.ledges[i][1]:  #if ledge above npc's head and lower than current ledge
-                if self.x <= self.ledges[i][0] and self.ledges[i][2] == 'l':
-                    if self.current_platform[1][0] + self.jump_width >= self.ledges[i][0]:
-                        self.chosen_ledge = self.ledges[i]
-                        self.find_jump_point()
-                        #print("new! {l}".format(l=self.chosen_ledge))
-                elif self.x >= self.ledges[i][0] and self.ledges[i][2] == 'r':
-                    if self.current_platform[0][0] - self.jump_width <= self.ledges[i][0]:
-                        self.chosen_ledge = self.ledges[i]
-                        self.find_jump_point()
-                        #print("new! {l}".format(l=self.chosen_ledge))
-                else:
-                    self.chosen_ledge = [0,0,'0']
+            if self.ledges[i][1] <= self.y + self.height and self.chosen_ledge[1] >= self.ledges[i][1]:  #if ledge above npc's head and lower than current ledge
 
+                if self.ledges[i][1] > self.y + self.height - self.jump_height: #can the npc jump to this ledge
+
+                    if self.x + self.width < self.ledges[i][0] and self.ledges[i][2] == 'l':  #if npc is left of the ledge, is the ledge labeled 'l'
+                        print(self.ledges[i])
+                        if self.current_platform[1][0] + self.jump_width >= self.ledges[i][0]: # can npc jump to the ledge from this platform?
+                            if self.ledges[i][0] < self.chosen_ledge[0]:
+                                self.chosen_ledge = self.ledges[i]
+                                self.find_jump_point()
+                                print("new! {l}".format(l=self.chosen_ledge))
+                    elif self.x > self.ledges[i][0] and self.ledges[i][2] == 'r': #if npc is right of the ledge, is the ledge labled 'r'
+                        if self.current_platform[0][0] - self.jump_width <= self.ledges[i][0]:
+                            if self.ledges[i][0] > self.chosen_ledge[0]:
+                                self.chosen_ledge = self.ledges[i]
+                                self.find_jump_point()
+                                print("new! {l}".format(l=self.chosen_ledge))
+                    #else:
+                        #self.chosen_ledge = [0,0,'0']
+        print("choosing end ledge: {e}".format(e=self.chosen_ledge))
 
 
 
@@ -1038,6 +1052,10 @@ def load_level(level):
     for chest in level[2]:
         chests.append(Chest(chest[0], chest[1]))
     for enemy in level[3]:
+        for platform in platforms:
+            while platform.x < enemy[0] - 20 < platform.x + platform.width and platform.y < enemy[1] + 20 < platform.y + platform.height:
+                enemy[1] += 10
+                print(enemy[1])
         enemies.append(red_guy(enemy[0], enemy[1], platforms))
     return level[4]
 
